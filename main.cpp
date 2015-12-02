@@ -322,6 +322,10 @@ int main () {
 
     printf("VERTEX COUNT:%d\n", SKY_MAP_VERTEX_COUNT);
 
+    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
+    GLfloat angle = 0.0f;
+    mat4 rotation;
+    mat4 skyViewMatrix;
 
     while (!glfwWindowShouldClose (hardware.window)) {
         updateMovement(&camera);
@@ -342,10 +346,19 @@ int main () {
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
+
+
+
+        //calculate pitch
+        angle += 0.001f;
+        if(angle > 359) angle = 0;
+        create_versor(quat, angle, 0.0f, 1.0f, 0.0f);
+        quat_to_mat4(rotation.m, quat);
+        skyViewMatrix = camera.viewMatrix * rotation;
         camera.viewMatrix.m[12] = 0;
         camera.viewMatrix.m[13] = 0;
         camera.viewMatrix.m[14] = 0;
-        glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+        glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
         glBindVertexArray(skyBoxVao);
         glEnableVertexAttribArray(0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
