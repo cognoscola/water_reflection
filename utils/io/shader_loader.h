@@ -22,4 +22,8 @@ bool create_programme (GLuint vert, GLuint frag, GLuint* programme);
 /* just use this func to create most shaders; give it vertex and frag files */
 GLuint create_programme_from_files (  const char* vert_file_name, const char* frag_file_name);
 
+GLuint create_programme_from_files_and_bind (const char* vert_file_name,const char* frag_file_name,const char* var_name);
+bool create_programme_and_bind(GLuint vert, GLuint frag, GLuint* programme, const char* name);
+
+
 #endif //SIMPLE_LEVEL_EDITOR_SHADER_LOADER_H

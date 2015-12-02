@@ -51,21 +51,6 @@ struct Camera{
     vec3 velocity; //actor's velocity
 };
 
-struct Wall{
-
-
-    vec3 position; //x,y,z
-    vec3 orientation; //x,y,z;
-    vec3 scale; //weight height
-
-    mat4 transformationMatrix;
-    mat4 T;
-    mat4 Rpitch;
-    mat4 Ryaw;
-    mat4 Rroll;
-    mat4 scaleMatrix;
-};
-
 
 struct Input{
     bool wPressed;

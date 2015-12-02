@@ -4,14 +4,15 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <utils/io/stb_image.h>
+#include <skybox/skybox.h>
 
 #define MESH_FILE "/home/alvaregd/Documents/Games/greyscale_terrain.obj"
-#define SKY_BACK "/home/alvaregd/Documents/Games/water_reflrection/assets/back.png"
-#define SKY_BOTTOM "/home/alvaregd/Documents/Games/water_reflrection/assets/bottom.png"
-#define SKY_FRONT "/home/alvaregd/Documents/Games/water_reflrection/assets/front.png"
-#define SKY_LEFT "/home/alvaregd/Documents/Games/water_reflrection/assets/left.png"
-#define SKY_RIGHT "/home/alvaregd/Documents/Games/water_reflrection/assets/right.png"
-#define SKY_TOP "/home/alvaregd/Documents/Games/water_reflrection/assets/top.png"
+#define SKY_BACK "/home/alvaregd/Documents/Games/water_reflection/assets/back.png"
+#define SKY_BOTTOM "/home/alvaregd/Documents/Games/water_reflection/assets/bottom.png"
+#define SKY_FRONT "/home/alvaregd/Documents/Games/water_reflection/assets/front.png"
+#define SKY_LEFT "/home/alvaregd/Documents/Games/water_reflection/assets/left.png"
+#define SKY_RIGHT "/home/alvaregd/Documents/Games/water_reflection/assets/right.png"
+#define SKY_TOP "/home/alvaregd/Documents/Games/water_reflection/assets/top.png"
 
 
 bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
@@ -37,7 +38,6 @@ bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
     *point_count  = mesh->mNumVertices;
 
     /* generate */
-
     glGenVertexArrays(1, vao);
     glBindVertexArray(*vao);
 
@@ -188,8 +188,8 @@ GLuint loadCubeMap(){
         glTexImage2D(target, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
         free(image_data);
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     return texID;
 }
 
@@ -253,18 +253,22 @@ int main () {
     glfwSetInputMode(hardware.window,GLFW_STICKY_KEYS, 1);
 
     GLuint shader_program = create_programme_from_files(VERTEX_SHADER, FRAGMENT_SHADER);
+    GLuint skybox_shader_program = create_programme_from_files(SKY_VERTEX, SKY_FRAGMENT);
     /* get version info */
     glEnable (GL_DEPTH_TEST); /* enable depth-testing */
-    glDepthFunc (GL_LESS);
 
-
+    ///Create VAO/VBO for the GRID
     createVertexBufferObject(&grid.vertexVbo, grid.numberOfLines * 6 * sizeof(GLfloat), gridVertexData);
     createVertexBufferObject(&grid.colourVbo, grid.numberOfLines * 6 * sizeof(GLfloat), gridColourData);
-
     createVertexArrayObjet(&grid.vao, &grid.vertexVbo, 3);
-
     grid.colourAttributeIndex = 1;
     setColourMesh(&grid.vao, &grid.colourVbo, 3, &grid.colourAttributeIndex);
+
+    //create VAO/VBO for the SKYBOX
+    GLuint skyBoxVao;
+    GLuint skyBoxVbo;
+    createVertexBufferObject(&skyBoxVbo, SKY_MAP_VERTEX_COUNT * 3 * sizeof(GLfloat), SKYBOX_VERTICES);
+    createVertexArrayObjet(&skyBoxVao,&skyBoxVbo, 3);
 
 
     // camera stuff
@@ -272,7 +276,7 @@ int main () {
 #define DEG_TO_RAD (2.0 * PI) / 360.0
 
     float near = 0.1f;
-    float far = 100.0f;
+    float far = 200.0f;
     double fov = 67.0f * DEG_TO_RAD;
     float aspect = (float)hardware.vmode->width /(float)hardware.vmode->height;
 
@@ -290,7 +294,6 @@ int main () {
     };
 
     camera = {};
-
     //create view matrix
     camera.pos[0] = 0.0f; // don't start at zero, or we will be too close
     camera.pos[1] = 0.0f; // don't start at zero, or we will be too close
@@ -299,18 +302,25 @@ int main () {
     camera.Rpitch = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.Ryaw = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.viewMatrix = camera.Rpitch * camera.T;
-
     glUseProgram(shader_program);
 
     camera.view_mat_location = glGetUniformLocation(shader_program, "view");
     camera.proj_mat_location = glGetUniformLocation(shader_program, "proj");
-
     glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(camera.proj_mat_location, 1, GL_FALSE, proj_mat);
 
+    glUseProgram(skybox_shader_program);
+    GLuint textureID = loadCubeMap();
+    GLint skybox_projection_mat_location = glGetUniformLocation(skybox_shader_program, "projectionMatrix");
+    GLint skybox_view_mat_location = glGetUniformLocation(skybox_shader_program, "viewMatrix");
+    glUniformMatrix4fv(skybox_projection_mat_location, 1, GL_FALSE, proj_mat);
+    glUniformMatrix4fv(skybox_view_mat_location , 1, GL_FALSE, camera.viewMatrix.m);
+
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
+
+    printf("VERTEX COUNT:%d\n", SKY_MAP_VERTEX_COUNT);
 
 
     while (!glfwWindowShouldClose (hardware.window)) {
@@ -320,17 +330,25 @@ int main () {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glViewport(0, 0, hardware.vmode->width, hardware.vmode->height);
-        glUseProgram(shader_program);
 
+        glUseProgram(shader_program);
         glBindVertexArray(meshVao);
         glDrawArrays(GL_TRIANGLES, 0, pointCount);
-
-
 
         //draw the grid
         glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
         glBindVertexArray(grid.vao);
         glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
+
+        //draw the sky box
+        glUseProgram(skybox_shader_program);
+        glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+        glBindVertexArray(skyBoxVao);
+        glEnableVertexAttribArray(0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+        glDrawArrays(GL_TRIANGLES, 0, SKY_MAP_VERTEX_COUNT);
+        glDisableVertexAttribArray(0);
+        glBindVertexArray(0);
 
         glfwPollEvents();
         if (GLFW_PRESS == glfwGetKey(hardware.window, GLFW_KEY_ESCAPE)) {
@@ -338,6 +356,10 @@ int main () {
         }
         glfwSwapBuffers(hardware.window);
     }
+
+
+
+
 
     /* close GL context and any other GLFW resources */
     glfwTerminate();
@@ -478,7 +500,6 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
     quat_to_mat4(camera.Rpitch.m, quat);
     create_versor(quat, camera.yaw, 0.0f, 1.0f, 0.0f);
     quat_to_mat4(camera.Ryaw.m,quat);
-
 
 }
 

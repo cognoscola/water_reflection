@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 
-project(simple_level_editor)
+project(water_reflection)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -8,8 +8,8 @@ set(CMAKE_MODULE_PATH /usr/local/lib/cmake /usr/local/lib/x86_64-linux-gnu/cmake
 set(CMAKE_PREFIX_PATH /usr/local/lib/cmake/glfw )
 
 
-set(ASSIMP_INCLUDE_DIR /home/alvaregd/Documents/Games/simple_level_editor/include/)
-FIND_LIBRARY(ASSIMP libassimp.so /home/alvaregd/Documents/Games/simple_level_editor/libs/)
+set(ASSIMP_INCLUDE_DIR /home/alvaregd/Documents/Games/water_reflection/include/)
+FIND_LIBRARY(ASSIMP libassimp.so /home/alvaregd/Documents/Games/water_reflection/libs/)
 if (NOT ASSIMP)
     MESSAGE(SEND_ERROR "Cannot find library libassimp.so")
 endif (NOT ASSIMP)
@@ -31,7 +31,8 @@ set(SOURCE_FILES main.cpp
         platform/hardware.h
         utils/io/shader_loader.cpp utils/io/shader_loader.h
         onScreenObjects.h
-        utils/io/stb_image.cpp utils/io/stb_image.h)
+        utils/io/stb_image.cpp utils/io/stb_image.h
+        skybox/skybox.h)
 #set(SOURCE_FILES main.cpp __add_other_cpp_files_here__)
 
 #set additional libraries
@@ -66,8 +67,8 @@ set(LIBRARIES
         ${ASSIMP}
         )
 
-add_executable(simple_level_editor ${SOURCE_FILES})
+add_executable(water_reflection ${SOURCE_FILES})
 
 
 include_directories(${CMAKE_SOURCE_DIR} ${INCLUDE_PATH})
-target_link_libraries (simple_level_editor ${LIBRARIES})
+target_link_libraries (water_reflection ${LIBRARIES})

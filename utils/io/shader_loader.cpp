@@ -119,3 +119,50 @@ GLuint create_programme_from_files ( const char* vert_file_name, const char* fra
     assert (create_programme (vert, frag, &programme));
     return programme;
 }
+
+
+GLuint create_programme_from_files_and_bind (
+        const char* vert_file_name,
+        const char* frag_file_name,
+        const char* var_name
+
+) {
+    GLuint vert, frag, programme;
+    assert (create_shader (vert_file_name, &vert, GL_VERTEX_SHADER));
+    assert (create_shader (frag_file_name, &frag, GL_FRAGMENT_SHADER));
+    assert (create_programme_and_bind (vert, frag, &programme, var_name));
+    return programme;
+}
+
+
+bool create_programme_and_bind(GLuint vert, GLuint frag, GLuint* programme, const char* name) {
+    *programme = glCreateProgram ();
+    glBindAttribLocation(*programme, 0, name);
+    gl_log (
+            "created programme %u. attaching shaders %u and %u...\n",
+            *programme,
+            vert,
+            frag
+    );
+    glAttachShader (*programme, vert);
+    glAttachShader (*programme, frag);
+    // link the shader programme. if binding input attributes do that before link
+    glLinkProgram (*programme);
+    GLint params = -1;
+    glGetProgramiv (*programme, GL_LINK_STATUS, &params);
+    if (GL_TRUE != params) {
+        gl_log_err (
+                "ERROR: could not link shader programme GL index %u\n",
+                *programme
+        );
+        print_programme_info_log (*programme);
+        return false;
+    }
+    assert (is_programme_valid (*programme));
+    // delete shaders here to free memory
+    glDeleteShader (vert);
+    glDeleteShader (frag);
+    return true;
+}
+
+
