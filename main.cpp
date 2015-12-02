@@ -152,7 +152,7 @@ GLuint loadCubeMap(){
             fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensiions\n", filename );
         }
 
-        int width_in_bytes = x *4;
+       /* int width_in_bytes = x *4;
         unsigned char *top = NULL;
         unsigned char *bottom = NULL;
         unsigned char temp = 0;
@@ -169,7 +169,7 @@ GLuint loadCubeMap(){
                 bottom++;
             }
         }
-
+*/
         GLenum target = GL_ERROR_REGAL;
         switch (i) {
             case 0: target = GL_TEXTURE_CUBE_MAP_POSITIVE_X;break;
@@ -342,6 +342,9 @@ int main () {
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
+        camera.viewMatrix.m[12] = 0;
+        camera.viewMatrix.m[13] = 0;
+        camera.viewMatrix.m[14] = 0;
         glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
         glBindVertexArray(skyBoxVao);
         glEnableVertexAttribArray(0);
