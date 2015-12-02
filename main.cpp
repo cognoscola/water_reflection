@@ -14,6 +14,73 @@
 #define SKY_RIGHT "/home/alvaregd/Documents/Games/water_reflection/assets/right.png"
 #define SKY_TOP "/home/alvaregd/Documents/Games/water_reflection/assets/top.png"
 
+#define REFLECTION_WIDTH = 320;
+#define REFLECTION_HEIGHT = 180;
+
+#define REFRACTION_WIDTH = 1280;
+#define REFRACTION_HEIGHT = 120;
+
+void unbindCurrentFrameBuffer(Hardware* hardware) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, hardware->vmode->width, hardware->vmode->height);
+
+}
+
+
+//call this function to tell opengl to render to our framebuffer object
+void bindFrameBufer(GLuint frameBuffer, int width, int height) {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+    glViewport(0, 0, width, height);
+
+}
+
+GLuint createTextureAttachment(int width, int height){
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glFramebufferTexture(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0, textureID,0);
+    return textureID;
+}
+
+GLuint createDepthTextureAttachment(int width, int height){
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glFramebufferTexture(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT, textureID,0);
+    return textureID;
+}
+
+GLuint createDepthBufferAttachment(int width, int height){
+
+    GLuint depthBuffer;
+    glGenRenderbuffers(1, &depthBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER, depthBuffer);
+    return depthBuffer;
+
+}
+
+
+GLuint createFrameBuffer(){
+
+    GLuint frameBufferID;
+    glGenFramebuffers(1,&frameBufferID);
+    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferID);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    return frameBufferID;
+
+}
+
 
 bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
 
@@ -53,7 +120,6 @@ bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
             points[i * 3 + 0] = (GLfloat)vp->x;
             points[i * 3 + 1] = (GLfloat)vp->y;
             points[i * 3 + 2] = (GLfloat)vp->z;
-
         }
     }
 
@@ -152,24 +218,6 @@ GLuint loadCubeMap(){
             fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensiions\n", filename );
         }
 
-       /* int width_in_bytes = x *4;
-        unsigned char *top = NULL;
-        unsigned char *bottom = NULL;
-        unsigned char temp = 0;
-        int half_height = y/2;
-
-        for (int row = 0; row < half_height; row++) {
-            top = image_data + row * width_in_bytes;
-            bottom = image_data + (y - row - 1) * width_in_bytes;
-            for (int col = 0; col < width_in_bytes; col++) {
-                temp = *top;
-                *top = *bottom;
-                *bottom = temp;
-                top++;
-                bottom++;
-            }
-        }
-*/
         GLenum target = GL_ERROR_REGAL;
         switch (i) {
             case 0: target = GL_TEXTURE_CUBE_MAP_POSITIVE_X;break;
@@ -194,6 +242,15 @@ GLuint loadCubeMap(){
 }
 
 int main () {
+
+    //
+    GLuint reflectionFrameBuffer;
+    GLuint reflectionTexture;
+    GLuint reflectionDepthBuffer;
+    GLuint refractionFrameBuffer;
+    GLuint refractionTexture;
+    GLuint refractionDepthTexture;
+
 
     //start logger system
     assert(restart_gl_log());
@@ -246,6 +303,11 @@ int main () {
         }
     }
 
+
+
+    //Create frame buffer object
+
+
     //create our wall items //2 triangles , 3 points each, 3 coordinate
     glfwSetCursorPosCallback(hardware.window,cursor_position_callback);
     glfwSetInputMode(hardware.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -260,6 +322,9 @@ int main () {
     ///Create VAO/VBO for the GRID
     createVertexBufferObject(&grid.vertexVbo, grid.numberOfLines * 6 * sizeof(GLfloat), gridVertexData);
     createVertexBufferObject(&grid.colourVbo, grid.numberOfLines * 6 * sizeof(GLfloat), gridColourData);
+    free(gridVertexData);
+    free(gridColourData);
+
     createVertexArrayObjet(&grid.vao, &grid.vertexVbo, 3);
     grid.colourAttributeIndex = 1;
     setColourMesh(&grid.vao, &grid.colourVbo, 3, &grid.colourAttributeIndex);
@@ -267,6 +332,7 @@ int main () {
     //create VAO/VBO for the SKYBOX
     GLuint skyBoxVao;
     GLuint skyBoxVbo;
+
     createVertexBufferObject(&skyBoxVbo, SKY_MAP_VERTEX_COUNT * 3 * sizeof(GLfloat), SKYBOX_VERTICES);
     createVertexArrayObjet(&skyBoxVao,&skyBoxVbo, 3);
 
@@ -302,17 +368,21 @@ int main () {
     camera.Rpitch = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.Ryaw = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.viewMatrix = camera.Rpitch * camera.T;
+
     glUseProgram(shader_program);
 
     camera.view_mat_location = glGetUniformLocation(shader_program, "view");
     camera.proj_mat_location = glGetUniformLocation(shader_program, "proj");
+
     glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(camera.proj_mat_location, 1, GL_FALSE, proj_mat);
 
     glUseProgram(skybox_shader_program);
     GLuint textureID = loadCubeMap();
+
     GLint skybox_projection_mat_location = glGetUniformLocation(skybox_shader_program, "projectionMatrix");
     GLint skybox_view_mat_location = glGetUniformLocation(skybox_shader_program, "viewMatrix");
+
     glUniformMatrix4fv(skybox_projection_mat_location, 1, GL_FALSE, proj_mat);
     glUniformMatrix4fv(skybox_view_mat_location , 1, GL_FALSE, camera.viewMatrix.m);
 
@@ -347,8 +417,6 @@ int main () {
         //draw the sky box
         glUseProgram(skybox_shader_program);
 
-
-
         //calculate pitch
         angle += 0.001f;
         if(angle > 359) angle = 0;
@@ -373,8 +441,17 @@ int main () {
         glfwSwapBuffers(hardware.window);
     }
 
+    glDeleteVertexArrays(1, &meshVao);
+    glDeleteVertexArrays(1, &skyBoxVao);
+    glDeleteBuffers(1, &skyBoxVbo);
 
 
+    glDeleteFramebuffers(1, &reflectionFrameBuffer);
+    glDeleteTextures(1, &reflectionTexture);
+    glDeleteRenderbuffers(1, &reflectionDepthBuffer);
+    glDeleteFramebuffers(1, &refractionFrameBuffer);
+    glDeleteTextures(1, &refractionTexture);
+    glDeleteTextures(1, &refractionDepthTexture);
 
 
     /* close GL context and any other GLFW resources */
@@ -589,9 +666,9 @@ static void updateMovement(Camera* camera) {
 
     //while we are moving (velocity is nonzero), update the camera's position
     if (camera->moving) {
-        camera->pos[0] += -camera->velocity.v[0] *0.02f;
-        camera->pos[2] += -camera->velocity.v[2] *0.02f;
-        camera->pos[1] += -camera->velocity.v[1] *0.02f;
+        camera->pos[0] += -camera->velocity.v[0] *0.15f;
+        camera->pos[2] += -camera->velocity.v[2] *0.15f;
+        camera->pos[1] += -camera->velocity.v[1] *0.15f;
         if(dot(camera->velocity,camera->velocity) < 1e-9) {
             camera->velocity.v[0] = camera->velocity.v[2] = camera->velocity.v[1] = 0.0f;
             camera->pushing = 0;
@@ -630,5 +707,6 @@ void setColourMesh(GLuint* vao, GLuint* bufferObject, GLint dimensions, GLuint* 
     glVertexAttribPointer (*attributeIndex, dimensions, GL_FLOAT, GL_FALSE, 0, NULL);
     glEnableVertexAttribArray(1);
 }
+
 
 
