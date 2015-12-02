@@ -7,11 +7,18 @@
 
 #include <GLFW/glfw3.h>
 #include <stdio.h>
-#include "hardware.h"
 #include <utils/log_utils/logger.h>
 
-extern Hardware hardware;
-bool start_gl();
+struct Hardware{
+    GLFWwindow* window;
+    GLFWmonitor *mon;
+    const GLFWvidmode* vmode;
+};
+
+bool start_gl(Hardware* hardware);
 void glfw_error_callback(int error, const char* description);
+
+
+
 
 #endif //SIMPLE_LEVEL_EDITOR_GLFW_LAUNCHER_H

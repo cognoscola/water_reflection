@@ -5,6 +5,7 @@
 #include <assimp/postprocess.h>
 #include <utils/io/stb_image.h>
 #include <skybox/skybox.h>
+#include <platform/glfw_launcher.h>
 
 #define MESH_FILE "/home/alvaregd/Documents/Games/greyscale_terrain.obj"
 #define SKY_BACK "/home/alvaregd/Documents/Games/water_reflection/assets/back.png"
@@ -255,10 +256,9 @@ int main () {
     //start logger system
     assert(restart_gl_log());
 
-    hardware = {}; //must initialize window before starting gl stuff
-
+    Hardware hardware;
     //create our main window
-    assert(start_gl());
+    assert(start_gl(&hardware));
 
     GLuint meshVao;
     int pointCount;
@@ -445,13 +445,13 @@ int main () {
     glDeleteVertexArrays(1, &skyBoxVao);
     glDeleteBuffers(1, &skyBoxVbo);
 
-
     glDeleteFramebuffers(1, &reflectionFrameBuffer);
     glDeleteTextures(1, &reflectionTexture);
     glDeleteRenderbuffers(1, &reflectionDepthBuffer);
     glDeleteFramebuffers(1, &refractionFrameBuffer);
     glDeleteTextures(1, &refractionTexture);
     glDeleteTextures(1, &refractionDepthTexture);
+
 
 
     /* close GL context and any other GLFW resources */
@@ -621,7 +621,6 @@ static void calculateViewMatrices(Camera *camera){
     camera->T = translate (identity_mat4 (), vec3 (-camera->pos[0], -camera->pos[1], -camera->pos[2]));
     camera->viewMatrix = camera->Rpitch * camera->Ryaw * camera->T;
 }
-
 
 /**
  * Calculate the player's kinematics and render it

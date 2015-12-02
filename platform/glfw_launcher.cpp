@@ -5,7 +5,7 @@
 #include <GL/glew.h>
 #include "glfw_launcher.h"
 
-bool start_gl () {
+bool start_gl (Hardware* hardware) {
 
     const GLubyte* renderer;
     const GLubyte* version;
@@ -18,16 +18,16 @@ bool start_gl () {
         return false;
     }
 
-    hardware.mon = glfwGetPrimaryMonitor();
-    hardware.vmode = glfwGetVideoMode(hardware.mon);
-    hardware.window = glfwCreateWindow (hardware.vmode->width, hardware.vmode->height, "Hello World", hardware.mon, NULL);
-    if (!hardware.window) {
+    hardware->mon= glfwGetPrimaryMonitor();
+    hardware->vmode = glfwGetVideoMode(hardware->mon);
+    hardware->window = glfwCreateWindow (hardware->vmode->width, hardware->vmode->height, "Hello World", hardware->mon, NULL);
+    if (!hardware->window) {
         fprintf (stderr, "ERROR: could not open window with GLFW3\n");
         glfwTerminate();
         return 1;
     }
 
-    glfwMakeContextCurrent (hardware.window);
+    glfwMakeContextCurrent (hardware->window);
 
     glewExperimental = GL_TRUE;
     glewInit ();
@@ -43,3 +43,4 @@ bool start_gl () {
 void glfw_error_callback(int error, const char* description) {
     gl_log_err("GLFW ERROR: code %i msg: %s\n", error, description);
 }
+

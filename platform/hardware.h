@@ -4,11 +4,8 @@
 
 #ifndef SIMPLE_LEVEL_EDITOR_HARDWARE_H
 #define SIMPLE_LEVEL_EDITOR_HARDWARE_H
+struct Hardware;
 
-struct Hardware{
-    GLFWwindow* window;
-    GLFWmonitor *mon;
-    const GLFWvidmode* vmode;
-};
+
 
 #endif //SIMPLE_LEVEL_EDITOR_HARDWARE_H

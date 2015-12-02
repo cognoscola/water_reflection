@@ -23,16 +23,18 @@ find_package (OpenGL REQUIRED)
 find_package (GLM REQUIRED)
 find_package (GLEW REQUIRED STATIC)
 
-set(SOURCE_FILES main.cpp
+set(SOURCE_FILES
+        main.cpp main.h
         utils/math_utils/maths_funcs.cpp utils/math_utils/maths_funcs.h
         utils/math_utils/quat_funcs.cpp utils/math_utils/quat_funcs.h
         utils/log_utils/logger.cpp utils/log_utils/logger.h
-        main.h platform/glfw_launcher.cpp platform/glfw_launcher.h
+        platform/glfw_launcher.cpp platform/glfw_launcher.h
         platform/hardware.h
         utils/io/shader_loader.cpp utils/io/shader_loader.h
         onScreenObjects.h
         utils/io/stb_image.cpp utils/io/stb_image.h
-        skybox/skybox.h)
+        skybox/skybox.h
+        camera/camera.cpp camera/camera.h )
 #set(SOURCE_FILES main.cpp __add_other_cpp_files_here__)
 
 #set additional libraries
