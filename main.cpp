@@ -15,11 +15,15 @@
 #define SKY_RIGHT "/home/alvaregd/Documents/Games/water_reflection/assets/right.png"
 #define SKY_TOP "/home/alvaregd/Documents/Games/water_reflection/assets/top.png"
 
-#define REFLECTION_WIDTH = 320;
-#define REFLECTION_HEIGHT = 180;
+#define WATER_VERTEX "/home/alvaregd/Documents/Games/water_reflection/water/water.vert"
+#define WATER_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/water/water.frag"
 
-#define REFRACTION_WIDTH = 1280;
-#define REFRACTION_HEIGHT = 120;
+#define REFLECTION_WIDTH  320
+#define REFLECTION_HEIGHT 180
+
+#define REFRACTION_WIDTH 1280
+#define REFRACTION_HEIGHT 120
+
 
 void unbindCurrentFrameBuffer(Hardware* hardware) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -27,13 +31,11 @@ void unbindCurrentFrameBuffer(Hardware* hardware) {
 
 }
 
-
 //call this function to tell opengl to render to our framebuffer object
 void bindFrameBufer(GLuint frameBuffer, int width, int height) {
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
     glViewport(0, 0, width, height);
-
 }
 
 GLuint createTextureAttachment(int width, int height){
@@ -71,7 +73,6 @@ GLuint createDepthBufferAttachment(int width, int height){
 
 }
 
-
 GLuint createFrameBuffer(){
 
     GLuint frameBufferID;
@@ -81,7 +82,6 @@ GLuint createFrameBuffer(){
     return frameBufferID;
 
 }
-
 
 bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
 
@@ -244,14 +244,12 @@ GLuint loadCubeMap(){
 
 int main () {
 
-    //
     GLuint reflectionFrameBuffer;
     GLuint reflectionTexture;
     GLuint reflectionDepthBuffer;
     GLuint refractionFrameBuffer;
     GLuint refractionTexture;
     GLuint refractionDepthTexture;
-
 
     //start logger system
     assert(restart_gl_log());
@@ -262,7 +260,7 @@ int main () {
 
     GLuint meshVao;
     int pointCount;
-    assert(load_mesh(MESH_FILE,&meshVao, &pointCount));
+    assert(load_mesh(MESH_FILE, &meshVao, &pointCount));
 
     grid = {};
     grid.numberOfLines = 100;
@@ -272,9 +270,9 @@ int main () {
     {
         int totalVerteces = 100 * 2;
         for (int i = 0; i < totalVerteces; ++i) {
-            gridColourData[i * 3  ]  = 0.5f;
-            gridColourData[i * 3 + 1]  = 0.0f;
-            gridColourData[i * 3 + 2]  = 0.5f;
+            gridColourData[i * 3] = 0.5f;
+            gridColourData[i * 3 + 1] = 0.0f;
+            gridColourData[i * 3 + 2] = 0.5f;
         }
     }
 
@@ -303,9 +301,59 @@ int main () {
         }
     }
 
+    //create a temp texture
+    GLfloat texcoords[] = {
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f,
+            1.0f, 1.0f,
+            0.0f,1.0f,
+            0.0f,0.0f
+    };
+    GLfloat points[] = {
+            -0.5f, -0.5f,  0.0f,
+            0.5f, -0.5f,  0.0f,
+            0.5f,  0.5f,  0.0f,
+            0.5f,  0.5f,  0.0f,
+            -0.5f,  0.5f,  0.0f,
+            -0.5f, -0.5f,  0.0f
+    };
+    GLuint temp_points_Vbo = 0;
+    glGenBuffers(1, &temp_points_Vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, temp_points_Vbo);
+    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), points, GL_STATIC_DRAW);
 
+    GLuint temp_coords_vbo;
+    glGenBuffers(1, &temp_coords_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, temp_coords_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), texcoords, GL_STATIC_DRAW);
+
+
+    GLuint temp_texture_vao = 0;
+    glGenVertexArrays(1, &temp_texture_vao);
+    glBindVertexArray(temp_texture_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, temp_points_Vbo);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+    glBindBuffer(GL_ARRAY_BUFFER, temp_coords_vbo);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     //Create frame buffer object
+    reflectionFrameBuffer = createFrameBuffer();
+    reflectionTexture = createTextureAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
+    reflectionDepthBuffer = createDepthBufferAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
+    unbindCurrentFrameBuffer(&hardware);
+
+    refractionFrameBuffer = createFrameBuffer();
+    refractionTexture = createTextureAttachment(REFRACTION_WIDTH, REFRACTION_HEIGHT);
+    refractionDepthTexture = createDepthTextureAttachment(REFRACTION_WIDTH, REFRACTION_HEIGHT);
+    unbindCurrentFrameBuffer(&hardware);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        printf("Frame Buffer messed up\n");
+    }
 
 
     //create our wall items //2 triangles , 3 points each, 3 coordinate
@@ -314,6 +362,7 @@ int main () {
     glfwSetKeyCallback(hardware.window, key_callback);
     glfwSetInputMode(hardware.window,GLFW_STICKY_KEYS, 1);
 
+    GLuint water_shader = create_programme_from_files(WATER_VERTEX, WATER_FRAGMENT);
     GLuint shader_program = create_programme_from_files(VERTEX_SHADER, FRAGMENT_SHADER);
     GLuint skybox_shader_program = create_programme_from_files(SKY_VERTEX, SKY_FRAGMENT);
     /* get version info */
@@ -335,7 +384,6 @@ int main () {
 
     createVertexBufferObject(&skyBoxVbo, SKY_MAP_VERTEX_COUNT * 3 * sizeof(GLfloat), SKYBOX_VERTICES);
     createVertexArrayObjet(&skyBoxVao,&skyBoxVbo, 3);
-
 
     // camera stuff
 #define PI 3.14159265359
@@ -401,23 +449,6 @@ int main () {
         updateMovement(&camera);
         calculateViewMatrices(&camera);
         //set the new view matrix @ the shader level
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glViewport(0, 0, hardware.vmode->width, hardware.vmode->height);
-
-        glUseProgram(shader_program);
-        glBindVertexArray(meshVao);
-        glDrawArrays(GL_TRIANGLES, 0, pointCount);
-
-        //draw the grid
-        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
-        glBindVertexArray(grid.vao);
-        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
-
-        //draw the sky box
-        glUseProgram(skybox_shader_program);
-
-        //calculate pitch
         angle += 0.001f;
         if(angle > 359) angle = 0;
         create_versor(quat, angle, 0.0f, 1.0f, 0.0f);
@@ -426,6 +457,25 @@ int main () {
         camera.viewMatrix.m[12] = 0;
         camera.viewMatrix.m[13] = 0;
         camera.viewMatrix.m[14] = 0;
+
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glViewport(0, 0, hardware.vmode->width, hardware.vmode->height);
+
+        //render to the reflection buffer
+        bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
+
+//        glUseProgram(shader_program);
+//        glBindVertexArray(meshVao);
+//        glDrawArrays(GL_TRIANGLES, 0, pointCount);
+
+        //draw the grid
+//        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+//        glBindVertexArray(grid.vao);
+//        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
+
+        //draw the sky box
+        glUseProgram(skybox_shader_program);
         glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
         glBindVertexArray(skyBoxVao);
         glEnableVertexAttribArray(0);
@@ -434,12 +484,50 @@ int main () {
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
 
+        //we are done rendering, now
+        unbindCurrentFrameBuffer(&hardware);
+
+     /*   glUseProgram(shader_program);
+        glBindVertexArray(meshVao);
+        glDrawArrays(GL_TRIANGLES, 0, pointCount);
+        //draw the grid
+        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+        glBindVertexArray(grid.vao);
+        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);*/
+
+
+        //draw the sky box
+        glUseProgram(skybox_shader_program);
+        glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
+        glBindVertexArray(skyBoxVao);
+        glEnableVertexAttribArray(0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+        glDrawArrays(GL_TRIANGLES, 0, SKY_MAP_VERTEX_COUNT);
+        glDisableVertexAttribArray(0);
+        glBindVertexArray(0);
+
+        //render the temp texture
+        glUseProgram(water_shader);
+        glBindVertexArray(temp_texture_vao);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glBindVertexArray(0);
+
         glfwPollEvents();
         if (GLFW_PRESS == glfwGetKey(hardware.window, GLFW_KEY_ESCAPE)) {
             glfwSetWindowShouldClose(hardware.window, 1);
         }
         glfwSwapBuffers(hardware.window);
     }
+
+    glDeleteBuffers(1, &temp_points_Vbo);
+    glDeleteBuffers(1, &temp_coords_vbo);
+    glDeleteVertexArrays(1, &temp_texture_vao);
 
     glDeleteVertexArrays(1, &meshVao);
     glDeleteVertexArrays(1, &skyBoxVao);
@@ -451,8 +539,6 @@ int main () {
     glDeleteFramebuffers(1, &refractionFrameBuffer);
     glDeleteTextures(1, &refractionTexture);
     glDeleteTextures(1, &refractionDepthTexture);
-
-
 
     /* close GL context and any other GLFW resources */
     glfwTerminate();
@@ -665,9 +751,9 @@ static void updateMovement(Camera* camera) {
 
     //while we are moving (velocity is nonzero), update the camera's position
     if (camera->moving) {
-        camera->pos[0] += -camera->velocity.v[0] *0.15f;
-        camera->pos[2] += -camera->velocity.v[2] *0.15f;
-        camera->pos[1] += -camera->velocity.v[1] *0.15f;
+        camera->pos[0] += -camera->velocity.v[0] *0.3f;
+        camera->pos[2] += -camera->velocity.v[2] *0.3f;
+        camera->pos[1] += -camera->velocity.v[1] *0.3f;
         if(dot(camera->velocity,camera->velocity) < 1e-9) {
             camera->velocity.v[0] = camera->velocity.v[2] = camera->velocity.v[1] = 0.0f;
             camera->pushing = 0;
