@@ -318,6 +318,14 @@ int main () {
             -0.5f,  0.5f,  0.0f,
             -0.5f, -0.5f,  0.0f
     };
+    /*GLfloat points[] = {
+            -1.0f, -1.f,  0.0f,
+            1.0f, -1.0f,  0.0f,
+            1.0f,  1.0f,  0.0f,
+            1.0f,  1.0f,  0.0f,
+            -1.0f,  1.0f,  0.0f,
+            -1.0f, -1.0f,  0.0f
+    };*/
     GLuint temp_points_Vbo = 0;
     glGenBuffers(1, &temp_points_Vbo);
     glBindBuffer(GL_ARRAY_BUFFER, temp_points_Vbo);
@@ -426,7 +434,7 @@ int main () {
     glUniformMatrix4fv(camera.proj_mat_location, 1, GL_FALSE, proj_mat);
 
     glUseProgram(skybox_shader_program);
-    GLuint textureID = loadCubeMap();
+    GLuint skyboxTexture = loadCubeMap();
 
     GLint skybox_projection_mat_location = glGetUniformLocation(skybox_shader_program, "projectionMatrix");
     GLint skybox_view_mat_location = glGetUniformLocation(skybox_shader_program, "viewMatrix");
@@ -459,11 +467,12 @@ int main () {
         camera.viewMatrix.m[14] = 0;
 
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glViewport(0, 0, hardware.vmode->width, hardware.vmode->height);
 
         //render to the reflection buffer
         bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
 //        glUseProgram(shader_program);
 //        glBindVertexArray(meshVao);
@@ -479,21 +488,22 @@ int main () {
         glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
         glBindVertexArray(skyBoxVao);
         glEnableVertexAttribArray(0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
         glDrawArrays(GL_TRIANGLES, 0, SKY_MAP_VERTEX_COUNT);
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
 
         //we are done rendering, now
         unbindCurrentFrameBuffer(&hardware);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-     /*   glUseProgram(shader_program);
-        glBindVertexArray(meshVao);
-        glDrawArrays(GL_TRIANGLES, 0, pointCount);
+//        glUseProgram(shader_program);
+//        glBindVertexArray(meshVao);
+//        glDrawArrays(GL_TRIANGLES, 0, pointCount);
         //draw the grid
-        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
-        glBindVertexArray(grid.vao);
-        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);*/
+//        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+//        glBindVertexArray(grid.vao);
+//        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
 
 
         //draw the sky box
@@ -501,7 +511,7 @@ int main () {
         glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
         glBindVertexArray(skyBoxVao);
         glEnableVertexAttribArray(0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
         glDrawArrays(GL_TRIANGLES, 0, SKY_MAP_VERTEX_COUNT);
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
