@@ -585,7 +585,6 @@ int main () {
         unbindCurrentFrameBuffer(&hardware);
 
         //Render to the default buffer
-        glDisable(GL_CLIP_DISTANCE0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(mesh_shader);

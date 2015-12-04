@@ -6,7 +6,7 @@ uniform mat4 viewMatrix;
 layout(location = 0)in vec3 positions;
 out vec3 textureCoords;
 
-//uniform vec4 u_plane0 = vec4(0,-1,0,15);
+//uniform vec4 u_plane0 = vec4(0,-1,0,0);
 
 void main () {
 
