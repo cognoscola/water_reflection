@@ -17,6 +17,7 @@ struct Camera{
     float pos[3]; // don't start at zero, or we will be too close
     float yaw = 0.0f; // y-rotation in degrees
     float pitch = 0.0f;
+    float roll = 0.0f;
     float signal_amplifier = 0.1f;
 
     mat4 T;

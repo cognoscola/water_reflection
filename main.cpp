@@ -29,6 +29,7 @@
 
 #define CUP_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/ao_colour.png"
 #define DUDV_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/waterDUDV.png"
+#define NORMALMAP_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/normalMap.png"
 
 #define REFLECTION_WIDTH  320
 #define REFLECTION_HEIGHT 180
@@ -316,6 +317,7 @@ int main () {
 
     GLuint meshTextureID;
     GLuint dudvTexture;
+    GLuint normalMapTexture;
     //start logger system
     assert(restart_gl_log());
 
@@ -329,6 +331,7 @@ int main () {
 
     meshTextureID = getTextureFromFile(CUP_TEXTURE);
     dudvTexture = getTextureFromFile(DUDV_FILE);
+    normalMapTexture = getTextureFromFile(NORMALMAP_FILE);
 
     grid = {};
     grid.numberOfLines = 100;
@@ -544,8 +547,15 @@ int main () {
     GLint location_dudv                 = glGetUniformLocation(water_shader, "dudvMap");
     GLint location_waterModelViewMatrix = glGetUniformLocation(water_shader, "modelViewMatrix");
     GLint location_waterProjMatrix      = glGetUniformLocation(water_shader, "projectionMatrix");
-    GLint location_moveFactor           =glGetUniformLocation(water_shader, "moveFactor");
+    GLint location_moveFactor           = glGetUniformLocation(water_shader, "moveFactor");
+    GLint location_cameraPosition       = glGetUniformLocation(water_shader, "cameraPosition");
+    GLint location_normalMap            = glGetUniformLocation(water_shader, "normalMap");
+    GLint location_lightColour          = glGetUniformLocation(water_shader, "lightColour");
+    GLint location_lightPosition        = glGetUniformLocation(water_shader, "lightPosition");
     glUniformMatrix4fv(location_waterProjMatrix , 1, GL_FALSE, proj_mat);
+
+    glUniform3f(location_lightColour , 1.0f,1.0f,1.0f);
+    glUniform3f(location_lightPosition , 50.0f,100.0f,50.0f);
 
 //    glActiveTexture(GL_TEXTURE0);
 //    glBindTexture(GL_TEXTURE_2D, reflectionTexture);
@@ -557,6 +567,10 @@ int main () {
     glUniform1i(location_reflectionTexture,0 );
     glUniform1i(location_refractionTexture,1 );
     glUniform1i(location_dudv,2 );
+    glUniform1i(location_normalMap,3);
+
+    //load up information of
+
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -711,7 +725,6 @@ int main () {
         glBindVertexArray(0);
 
         //render the reflection texture
-
         static double previous_seconds = glfwGetTime ();
         static double current_seconds = glfwGetTime ();
         static double elapsed_seconds = current_seconds - previous_seconds;
@@ -720,11 +733,11 @@ int main () {
 
         moveFactor += (WAVE_SPEED *  elapsed_seconds * 500);
         moveFactor = fmod(moveFactor, 1.0);
-        printf("Time:%f\n", moveFactor);
 
         glUseProgram(water_shader);
         waterModelViewMatrix = camera.viewMatrix * waterT * waterR * waterS;
-        glUniform1f(location_moveFactor, moveFactor);
+        glUniform1f(location_moveFactor,        moveFactor);
+        glUniform3f(location_cameraPosition,    camera.pos[0],camera.pos[1],camera.pos[2]);
         glUniformMatrix4fv(location_waterModelViewMatrix  , 1, GL_FALSE, waterModelViewMatrix.m);
         glBindVertexArray(waterReflectionVao);
         glEnableVertexAttribArray(0);
@@ -737,6 +750,8 @@ int main () {
         glBindTexture(GL_TEXTURE_2D, refractionTexture);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, dudvTexture);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, normalMapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
