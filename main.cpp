@@ -552,6 +552,7 @@ int main () {
     GLint location_normalMap            = glGetUniformLocation(water_shader, "normalMap");
     GLint location_lightColour          = glGetUniformLocation(water_shader, "lightColour");
     GLint location_lightPosition        = glGetUniformLocation(water_shader, "lightPosition");
+    GLint location_depthMap             = glGetUniformLocation(water_shader, "depthMap");
     glUniformMatrix4fv(location_waterProjMatrix , 1, GL_FALSE, proj_mat);
 
     glUniform3f(location_lightColour , 1.0f,1.0f,1.0f);
@@ -568,6 +569,7 @@ int main () {
     glUniform1i(location_refractionTexture,1 );
     glUniform1i(location_dudv,2 );
     glUniform1i(location_normalMap,3);
+    glUniform1i(location_depthMap,4);
 
     //load up information of
 
@@ -624,7 +626,7 @@ int main () {
         camera.viewMatrix.m[13] +=reflectionDistance;
         meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -0);
+        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, 1);
         glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
         glEnableVertexAttribArray(0);
@@ -752,6 +754,8 @@ int main () {
         glBindTexture(GL_TEXTURE_2D, dudvTexture);
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, normalMapTexture);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, refractionDepthTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
