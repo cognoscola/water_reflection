@@ -602,7 +602,7 @@ int main () {
         camera.viewMatrix.m[13] +=reflectionDistance;
         meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, 0);
+        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -);
         glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
         glEnableVertexAttribArray(0);
