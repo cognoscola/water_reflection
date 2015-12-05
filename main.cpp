@@ -7,7 +7,8 @@
 #include <skybox/skybox.h>
 #include <platform/glfw_launcher.h>
 
-#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/woodcupsmooth.obj"
+#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/floating_island.obj"
+//#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/woodcupsmooth.obj"
 //#define MESH_FILE "/home/alvaregd/Documents/Games/greyscale_terrain.obj"
 
 #define SKY_BACK "/home/alvaregd/Documents/Games/water_reflection/assets/back.png"
@@ -23,7 +24,7 @@
 #define MESH_VERTEX "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.vert"
 #define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
 
-#define CUP_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/woodsample.jpg"
+#define CUP_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/ao_colour.png"
 
 #define REFLECTION_WIDTH  320
 #define REFLECTION_HEIGHT 180
@@ -31,6 +32,7 @@
 #define REFRACTION_WIDTH 1280
 #define REFRACTION_HEIGHT 120
 
+static void calculatePitch(GLfloat angle);
 
 void unbindCurrentFrameBuffer(Hardware* hardware) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -263,7 +265,28 @@ GLuint getTextureFromFile() {
         fprintf(stderr, "ERROR: could not load %s\n", CUP_TEXTURE);
     }
     if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
-        fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensiions\n", CUP_TEXTURE);
+        fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensions\n", CUP_TEXTURE);
+    }
+    printf("Found texture, size:%dx%d\n", x,y);
+
+
+    //flip the image
+    int width_in_bytes = x *4;
+    unsigned char *top = NULL;
+    unsigned char *bottom = NULL;
+    unsigned char temp = 0;
+    int half_height = y/2;
+
+    for (int row = 0; row < half_height; row++) {
+        top = image_data + row * width_in_bytes;
+        bottom = image_data + (y - row - 1) * width_in_bytes;
+        for (int col = 0; col < width_in_bytes; col++) {
+            temp = *top;
+            *top = *bottom;
+            *bottom = temp;
+            top++;
+            bottom++;
+        }
     }
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
@@ -300,6 +323,7 @@ int main () {
     assert(load_mesh(MESH_FILE, &meshVao, &pointCount));
 
     meshTextureID = getTextureFromFile();
+//    meshTextureID = 0;
 
 
     grid = {};
@@ -503,7 +527,9 @@ int main () {
     glUseProgram(mesh_shader);
     GLint location_meshViewMatrix  = glGetUniformLocation(mesh_shader, "modelViewMatrix");
     GLint location_meshProjMatrix  = glGetUniformLocation(mesh_shader, "projectionMatrix");
+    GLint location_clipPlane       = glGetUniformLocation(mesh_shader, "plane");
 
+    glUniform4f(location_clipPlane, 0.0f, -1.0f, 0.0f, 1.0f);
     glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(location_meshProjMatrix , 1, GL_FALSE, proj_mat);
 
@@ -514,9 +540,31 @@ int main () {
     mat4 rotation;
     mat4 skyViewMatrix;
 
+    mat4 s = scale(identity_mat4(), vec3(10,10,10));
+    mat4 meshMatrix = camera.viewMatrix * s;
+
+    //water stuff
+    GLfloat waterheight = 1.0f;
+    GLfloat reflectionDistance;
+
     while(!glfwWindowShouldClose (hardware.window)) {
         glEnable(GL_CLIP_DISTANCE0);
         updateMovement(&camera);
+        calculateViewMatrices(&camera);
+
+
+        //render to the reflection buffer
+        bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
+        //calcualte the camera's height while rendering the refleciton
+        reflectionDistance = 2 * (camera.pos[1] - waterheight);
+
+        printf("DISTANCE: %f CAMPOS: %f\n", reflectionDistance, camera.pos[1]);
+
+        calculatePitch(-camera.pitch);
         calculateViewMatrices(&camera);
 
         //set the new view matrix @ the shader level
@@ -528,22 +576,22 @@ int main () {
         skyViewMatrix.m[12] = 0;
         skyViewMatrix.m[13] = 0;
         skyViewMatrix.m[14] = 0;
-        glViewport(0, 0, hardware.vmode->width, hardware.vmode->height);
 
-        //render to the reflection buffer
-        bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glUseProgram(object_shader);
-        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
-        glUniform4f(planeLocation, plane.v[0], plane.v[1], plane.v[2], plane.v[3]);
+        meshMatrix =camera.viewMatrix* s;
+        glUseProgram(mesh_shader);
+        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -waterheight);
+        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
-        glEnable(GL_CLIP_DISTANCE0);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, meshTextureID);
         glDrawArrays(GL_TRIANGLES, 0, pointCount);
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(2);
 
-        //draw the grid
-//        glBindVertexArray(grid.vao);
-//        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
@@ -555,21 +603,39 @@ int main () {
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
 
+        calculatePitch(camera.pitch);
+        calculateViewMatrices(&camera);
+
         //we are done rendering, now
         unbindCurrentFrameBuffer(&hardware);
 
+        //render to the refraction buffer
         bindFrameBufer(refractionFrameBuffer, REFRACTION_WIDTH, REFRACTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(object_shader);
-        glUniform4f(planeLocation, plane.v[0], plane.v[1], plane.v[2], plane.v[3]);
-        glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
+        angle += 0.001f;
+        if (angle > 359) angle = 0;
+        create_versor(quat, angle, 0.0f, 1.0f, 0.0f);
+        quat_to_mat4(rotation.m, quat);
+        skyViewMatrix = camera.viewMatrix * rotation;
+        skyViewMatrix.m[12] = 0;
+        skyViewMatrix.m[13] = 0;
+        skyViewMatrix.m[14] = 0;
+        meshMatrix =camera.viewMatrix* s;
+        glUseProgram(mesh_shader);
+        glUniform4f(location_clipPlane, 0.0f,-1.0f, 0.0f, waterheight);
+        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, meshTextureID);
         glDrawArrays(GL_TRIANGLES, 0, pointCount);
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(2);
 
-        //draw the grid
-//        glBindVertexArray(grid.vao);
-//        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
@@ -586,18 +652,23 @@ int main () {
 
         //Render to the default buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDisable(GL_CLIP_DISTANCE0);
 
+        //render the mesh
+        meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
-        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, camera.viewMatrix.m);
+        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
+        glUniform4f(location_clipPlane, 0.0f, -1.0f, 0.0f, 1000.0f);
         glBindVertexArray(meshVao);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, meshTextureID);
         glDrawArrays(GL_TRIANGLES, 0, pointCount);
-        //draw the grid
-//        glBindVertexArray(grid.vao);
-//        glDrawArrays(GL_LINES, 0, grid.numberOfLines* 2);
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(2);
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
@@ -789,11 +860,18 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
     camera.pitch += position_y_difference *camera.signal_amplifier;
 
     //calculate rotation sequence
-    create_versor(quat, camera.pitch, 1.0f, 0.0f, 0.0f);
-    quat_to_mat4(camera.Rpitch.m, quat);
+//    create_versor(quat, camera.pitch, 1.0f, 0.0f, 0.0f);
+//    quat_to_mat4(camera.Rpitch.m, quat);
+    calculatePitch(camera.pitch);
     create_versor(quat, camera.yaw, 0.0f, 1.0f, 0.0f);
     quat_to_mat4(camera.Ryaw.m,quat);
 
+}
+
+static void calculatePitch(GLfloat angle){
+    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
+    create_versor(quat, angle, 1.0f, 0.0f, 0.0f);
+    quat_to_mat4(camera.Rpitch.m, quat);
 }
 
 /**

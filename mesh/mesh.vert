@@ -8,7 +8,7 @@ out vec2 pass_textureCoords;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
-vec4  plane = vec4(0,-1,0,0);
+uniform vec4 plane;
 
 void main(void){
 
