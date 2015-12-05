@@ -7,6 +7,9 @@
 #include <skybox/skybox.h>
 #include <platform/glfw_launcher.h>
 
+#define PI 3.14159265359
+#define DEG_TO_RAD (2.0 * PI) / 360.0
+
 #define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/floating_island.obj"
 //#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/woodcupsmooth.obj"
 //#define MESH_FILE "/home/alvaregd/Documents/Games/greyscale_terrain.obj"
@@ -37,7 +40,6 @@ static void calculatePitch(GLfloat angle);
 void unbindCurrentFrameBuffer(Hardware* hardware) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, hardware->vmode->width, hardware->vmode->height);
-
 }
 
 //call this function to tell opengl to render to our framebuffer object
@@ -484,8 +486,6 @@ int main () {
     createVertexArrayObjet(&skyBoxVao,&skyBoxVbo, 3);
 
     // camera stuff
-#define PI 3.14159265359
-#define DEG_TO_RAD (2.0 * PI) / 360.0
 
     float near = 0.1f;
     float far = 200.0f;
@@ -508,7 +508,7 @@ int main () {
     camera = {};
     //create view matrix
     camera.pos[0] = 0.0f; // don't start at zero, or we will be too close
-    camera.pos[1] = 0.0f; // don't start at zero, or we will be too close
+    camera.pos[1] = 10.0f; // don't start at zero, or we will be too close
     camera.pos[2] = 0.5f; // don't start at zero, or we will be too close
     camera.T = translate (identity_mat4 (), vec3 (-camera.pos[0], -camera.pos[1], -camera.pos[2]));
     camera.Rpitch = rotate_y_deg (identity_mat4 (), -camera.yaw);
@@ -544,6 +544,22 @@ int main () {
     glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(location_meshProjMatrix , 1, GL_FALSE, proj_mat);
 
+    glUseProgram(water_shader);
+    GLint location_reflectionTexture    = glGetUniformLocation(water_shader, "reflectionTexture");
+    GLint location_refractionTexture    = glGetUniformLocation(water_shader, "refractionTexture");
+    GLint location_waterModelViewMatrix = glGetUniformLocation(water_shader, "modelViewMatrix");
+    GLint location_waterProjMatrix      = glGetUniformLocation(water_shader, "projectionMatrix");
+    glUniformMatrix4fv(location_waterProjMatrix , 1, GL_FALSE, proj_mat);
+
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, refractionTexture);
+
+    glUniform1i(location_reflectionTexture,0 );
+    glUniform1i(location_refractionTexture,1 );
+
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
@@ -553,13 +569,19 @@ int main () {
     GLfloat angle = 0.0f;
     mat4 rotation;
     mat4 skyViewMatrix;
-
     mat4 s = scale(identity_mat4(), vec3(10,10,10));
     mat4 meshMatrix = camera.viewMatrix * s;
 
     //water stuff
     GLfloat waterheight = 1.0f;
     GLfloat reflectionDistance;
+
+    mat4 waterT = translate(identity_mat4(), vec3(100.0f,5.0f,55.0f));
+    create_versor(quat, 90, -1.0f, 0.0f, 0.0f);
+    mat4 waterS = scale(identity_mat4(),vec3(200.0f,140.0f,0) );
+    mat4 waterR;
+    quat_to_mat4(waterR.m, quat);
+    mat4 waterModelViewMatrix ;
 
     while(!glfwWindowShouldClose (hardware.window)) {
         glEnable(GL_CLIP_DISTANCE0);
@@ -692,26 +714,33 @@ int main () {
 
         //render the reflection texture
         glUseProgram(water_shader);
+
+        waterModelViewMatrix = camera.viewMatrix * waterT * waterR * waterS;
+        glUniformMatrix4fv(location_waterModelViewMatrix  , 1, GL_FALSE, waterModelViewMatrix.m);
         glBindVertexArray(waterReflectionVao);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, reflectionTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glBindVertexArray(0);
-
-        //render the refraction texture
-        glBindVertexArray(waterRefractionVao);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, refractionTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
         glBindVertexArray(0);
+
+     /*   //render the refraction texture
+        glBindVertexArray(waterRefractionVao);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, refractionTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glBindVertexArray(0);*/
 
         glfwPollEvents();
         if (GLFW_PRESS == glfwGetKey(hardware.window, GLFW_KEY_ESCAPE)) {
