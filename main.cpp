@@ -463,7 +463,6 @@ int main () {
 
     GLuint mesh_shader = create_programme_from_files(MESH_VERTEX, MESH_FRAGMENT);
     GLuint water_shader = create_programme_from_files(WATER_VERTEX, WATER_FRAGMENT);
-    GLuint object_shader = create_programme_from_files(VERTEX_SHADER, FRAGMENT_SHADER);
     GLuint skybox_shader_program = create_programme_from_files(SKY_VERTEX, SKY_FRAGMENT);
     /* get version info */
     glEnable (GL_DEPTH_TEST); /* enable depth-testing */
@@ -515,13 +514,6 @@ int main () {
     camera.Ryaw = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.viewMatrix = camera.Rpitch * camera.T;
 
-    glUseProgram(object_shader);
-    glEnable (GL_CLIP_DISTANCE0);
-    camera.view_mat_location = glGetUniformLocation(object_shader, "view");
-    camera.proj_mat_location = glGetUniformLocation(object_shader, "proj");
-    GLint planeLocation;
-    vec4 plane = vec4(0.0f, -1.0f, 0.0f, 15.0f);
-    planeLocation= glGetUniformLocation(object_shader, "plane");
 
     glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(camera.proj_mat_location, 1, GL_FALSE, proj_mat);
@@ -573,10 +565,10 @@ int main () {
     mat4 meshMatrix = camera.viewMatrix * s;
 
     //water stuff
-    GLfloat waterheight = 1.0f;
+    GLfloat waterheight = 5.0f;
     GLfloat reflectionDistance;
 
-    mat4 waterT = translate(identity_mat4(), vec3(100.0f,5.0f,55.0f));
+    mat4 waterT = translate(identity_mat4(), vec3(100.0f,waterheight,55.0f));
     create_versor(quat, 90, -1.0f, 0.0f, 0.0f);
     mat4 waterS = scale(identity_mat4(),vec3(200.0f,140.0f,0) );
     mat4 waterR;
