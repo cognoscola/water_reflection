@@ -365,7 +365,17 @@ int main () {
         }
     }
 
+    GLfloat texcoords[] = {
+            1.0f,1.0f,
+            0.0f,1.0f,
+            0.0f,0.0f,
+            0.0f,0.0f,
+            1.0f, 0.0f,
+            1.0f,1.0f,
+
+    };
     //create a temp texture
+/*//TODO delete this if we don't need it
     GLfloat texcoords[] = {
             0.0f,0.0f,
             1.0f,0.0f,
@@ -374,6 +384,7 @@ int main () {
             0.0f,1.0f,
             0.0f,0.0f
     };
+*/
     GLfloat reflection_points[] = {
             -0.75f, 0.25f,  0.0f,
             -0.25f, 0.25f,  0.0f,
@@ -533,6 +544,9 @@ int main () {
     glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(location_meshProjMatrix , 1, GL_FALSE, proj_mat);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
@@ -550,23 +564,18 @@ int main () {
     while(!glfwWindowShouldClose (hardware.window)) {
         glEnable(GL_CLIP_DISTANCE0);
         updateMovement(&camera);
-        calculateViewMatrices(&camera);
-
 
         //render to the reflection buffer
         bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
         //calcualte the camera's height while rendering the refleciton
         reflectionDistance = 2 * (camera.pos[1] - waterheight);
 
-        printf("DISTANCE: %f CAMPOS: %f\n", reflectionDistance, camera.pos[1]);
+//        printf("DISTANCE: %f CAMPOS: %f\n", reflectionDistance, camera.pos[1]);
 
         calculatePitch(-camera.pitch);
         calculateViewMatrices(&camera);
-
         //set the new view matrix @ the shader level
         angle += 0.001f;
         if (angle > 359) angle = 0;
@@ -576,7 +585,7 @@ int main () {
         skyViewMatrix.m[12] = 0;
         skyViewMatrix.m[13] = 0;
         skyViewMatrix.m[14] = 0;
-
+        camera.viewMatrix.m[13] +=reflectionDistance;
         meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
         glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -waterheight);
@@ -603,6 +612,7 @@ int main () {
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
 
+        camera.viewMatrix.m[13] -=reflectionDistance;
         calculatePitch(camera.pitch);
         calculateViewMatrices(&camera);
 
