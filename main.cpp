@@ -28,12 +28,15 @@
 #define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
 
 #define CUP_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/ao_colour.png"
+#define DUDV_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/waterDUDV.png"
 
 #define REFLECTION_WIDTH  320
 #define REFLECTION_HEIGHT 180
 
 #define REFRACTION_WIDTH 1280
 #define REFRACTION_HEIGHT 120
+
+#define WAVE_SPEED 0.03
 
 static void calculatePitch(GLfloat angle);
 
@@ -241,7 +244,7 @@ GLuint loadCubeMap(){
         }
 
         if (target == GL_ERROR_REGAL) {
-            return (GLuint) -1;
+            return (GLuint) 1;
         }
 
         glTexImage2D(target, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
@@ -253,7 +256,7 @@ GLuint loadCubeMap(){
 }
 
 
-GLuint getTextureFromFile() {
+GLuint getTextureFromFile(const char* filename) {
 
     GLuint texID;
     glGenTextures(1, &texID);
@@ -262,12 +265,12 @@ GLuint getTextureFromFile() {
 
     int x, y, n;
     int force_channels = 4;
-    unsigned char *image_data = stbi_load(CUP_TEXTURE, &x, &y, &n, force_channels);
+    unsigned char *image_data = stbi_load(filename, &x, &y, &n, force_channels);
     if (!image_data) {
-        fprintf(stderr, "ERROR: could not load %s\n", CUP_TEXTURE);
+        fprintf(stderr, "ERROR: could not load %s\n", filename);
     }
     if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
-        fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensions\n", CUP_TEXTURE);
+        fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensions\n", filename);
     }
     printf("Found texture, size:%dx%d\n", x,y);
 
@@ -293,7 +296,7 @@ GLuint getTextureFromFile() {
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
     free(image_data);
-
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -312,7 +315,7 @@ int main () {
     GLuint refractionDepthTexture;
 
     GLuint meshTextureID;
-
+    GLuint dudvTexture;
     //start logger system
     assert(restart_gl_log());
 
@@ -324,9 +327,8 @@ int main () {
     int pointCount;
     assert(load_mesh(MESH_FILE, &meshVao, &pointCount));
 
-    meshTextureID = getTextureFromFile();
-//    meshTextureID = 0;
-
+    meshTextureID = getTextureFromFile(CUP_TEXTURE);
+    dudvTexture = getTextureFromFile(DUDV_FILE);
 
     grid = {};
     grid.numberOfLines = 100;
@@ -539,18 +541,22 @@ int main () {
     glUseProgram(water_shader);
     GLint location_reflectionTexture    = glGetUniformLocation(water_shader, "reflectionTexture");
     GLint location_refractionTexture    = glGetUniformLocation(water_shader, "refractionTexture");
+    GLint location_dudv                 = glGetUniformLocation(water_shader, "dudvMap");
     GLint location_waterModelViewMatrix = glGetUniformLocation(water_shader, "modelViewMatrix");
     GLint location_waterProjMatrix      = glGetUniformLocation(water_shader, "projectionMatrix");
+    GLint location_moveFactor           =glGetUniformLocation(water_shader, "moveFactor");
     glUniformMatrix4fv(location_waterProjMatrix , 1, GL_FALSE, proj_mat);
 
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, reflectionTexture);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, refractionTexture);
+//    glActiveTexture(GL_TEXTURE0);
+//    glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+//    glActiveTexture(GL_TEXTURE1);
+//    glBindTexture(GL_TEXTURE_2D, refractionTexture);
+//    glActiveTexture(GL_TEXTURE2);
+//    glBindTexture(GL_TEXTURE_2D, location_dudv);
 
     glUniform1i(location_reflectionTexture,0 );
     glUniform1i(location_refractionTexture,1 );
+    glUniform1i(location_dudv,2 );
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -574,6 +580,8 @@ int main () {
     mat4 waterR;
     quat_to_mat4(waterR.m, quat);
     mat4 waterModelViewMatrix ;
+
+    double moveFactor = 0;
 
     while(!glfwWindowShouldClose (hardware.window)) {
         glEnable(GL_CLIP_DISTANCE0);
@@ -602,7 +610,7 @@ int main () {
         camera.viewMatrix.m[13] +=reflectionDistance;
         meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -);
+        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, -0);
         glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
         glEnableVertexAttribArray(0);
@@ -614,7 +622,6 @@ int main () {
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(2);
-
 
         //draw the sky box
         glUseProgram(skybox_shader_program);
@@ -660,7 +667,6 @@ int main () {
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(2);
 
-
         //draw the sky box
         glUseProgram(skybox_shader_program);
         glUniformMatrix4fv(skybox_view_mat_location, 1, GL_FALSE, skyViewMatrix.m);
@@ -705,20 +711,37 @@ int main () {
         glBindVertexArray(0);
 
         //render the reflection texture
-        glUseProgram(water_shader);
 
+        static double previous_seconds = glfwGetTime ();
+        static double current_seconds = glfwGetTime ();
+        static double elapsed_seconds = current_seconds - previous_seconds;
+        previous_seconds = current_seconds;
+        current_seconds  = glfwGetTime ();
+
+        moveFactor += (WAVE_SPEED *  elapsed_seconds * 500);
+        moveFactor = fmod(moveFactor, 1.0);
+        printf("Time:%f\n", moveFactor);
+
+        glUseProgram(water_shader);
         waterModelViewMatrix = camera.viewMatrix * waterT * waterR * waterS;
+        glUniform1f(location_moveFactor, moveFactor);
         glUniformMatrix4fv(location_waterModelViewMatrix  , 1, GL_FALSE, waterModelViewMatrix.m);
         glBindVertexArray(waterReflectionVao);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glEnableVertexAttribArray(3);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, reflectionTexture);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, refractionTexture);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, dudvTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(2);
+        glDisableVertexAttribArray(3);
         glBindVertexArray(0);
 
      /*   //render the refraction texture
