@@ -6,9 +6,12 @@
 #include <utils/io/stb_image.h>
 #include <skybox/skybox.h>
 #include <platform/glfw_launcher.h>
+#include <utils/io/stb_image_write.h>
 
 #define PI 3.14159265359
 #define DEG_TO_RAD (2.0 * PI) / 360.0
+
+#define SCREENSHOT_FILE "/home/alvaregd/Documents/Games/water_reflection/build/screenshot.png"
 
 #define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/floating_island.obj"
 //#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/woodcupsmooth.obj"
@@ -40,6 +43,77 @@
 #define WAVE_SPEED 0.03
 
 static void calculatePitch(GLfloat angle);
+
+unsigned char* g_video_memory_start = NULL;
+unsigned char* g_video_memory_ptr = NULL;
+int g_video_seconds_total = 10;
+int g_video_fps = 25;
+
+
+void reserve_video_memory (Hardware* hardware) {
+    // 480 MB at 800x800 resolution 230.4 MB at 640x480 resolution
+    g_video_memory_ptr = (unsigned char*)malloc (
+            hardware->vmode->width * hardware->vmode->height * 3 * g_video_fps * g_video_seconds_total
+    );
+    g_video_memory_start = g_video_memory_ptr;
+}
+
+void grab_video_frame (Hardware* hardware) {
+    // copy frame-buffer into 24-bit rgbrgb...rgb image
+    glReadPixels (
+            0, 0, hardware->vmode->width, hardware->vmode->height, GL_RGB, GL_UNSIGNED_BYTE, g_video_memory_ptr
+    );
+    // move video pointer along to the next frame's worth of bytes
+    g_video_memory_ptr += hardware->vmode->width * hardware->vmode->height * 3;
+}
+
+bool dump_video_frame (Hardware* hardware) {
+    static long int frame_number = 0;
+    printf ("writing video frame %li\n", frame_number);
+    // write into a file
+    char name[1024];
+    sprintf (name, "/home/alvaregd/Documents/Games/water_reflection/assets/video_frame_%03ld.png", frame_number);
+
+    unsigned char* last_row = g_video_memory_ptr +
+                              (hardware->vmode->width * 3 * (hardware->vmode->height - 1));
+    if (!stbi_write_png (
+            name, hardware->vmode->width, hardware->vmode->height, 3, last_row, -3 * hardware->vmode->width
+    )) {
+        fprintf (stderr, "ERROR: could not write video file %s\n", name);
+        return false;
+    }
+
+    frame_number++;
+    return true;
+}
+
+
+bool dump_video_frames (Hardware* hardware) {
+    // reset iterating pointer first
+    g_video_memory_ptr = g_video_memory_start;
+    for (int i = 0; i < g_video_seconds_total * g_video_fps; i++) {
+        if (!dump_video_frame (hardware)) {
+            return false;
+        }
+        g_video_memory_ptr += hardware->vmode->width * hardware->vmode->height* 3;
+    }
+    free (g_video_memory_start);
+    printf ("VIDEO IMAGES DUMPED\n");
+    return true;
+}
+
+
+bool screencapture (Hardware* hardware) {
+    unsigned char* buffer = (unsigned char*)malloc (hardware->vmode->width * hardware->vmode->height * 3);
+    glReadPixels (0, 0, hardware->vmode->width, hardware->vmode->height, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+    unsigned char* last_row = buffer + (hardware->vmode->width * 3 * (hardware->vmode->height - 1));
+    if (!stbi_write_png (SCREENSHOT_FILE, hardware->vmode->width, hardware->vmode->height, 3, last_row, -3 * hardware->vmode->width)) {
+        fprintf (stderr, "ERROR: could not write screenshot file %s\n", SCREENSHOT_FILE);
+    }
+    free (buffer);
+    return true;
+}
+
 
 void unbindCurrentFrameBuffer(Hardware* hardware) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -325,6 +399,8 @@ int main () {
     //create our main window
     assert(start_gl(&hardware));
 
+    reserve_video_memory (&hardware);
+
     GLuint meshVao;
     int pointCount;
     assert(load_mesh(MESH_FILE, &meshVao, &pointCount));
@@ -599,7 +675,34 @@ int main () {
 
     double moveFactor = 0;
 
+    // initialise timers
+    bool dump_video = false;
+    double video_timer = 0.0; // time video has been recording
+    double video_dump_timer = 0.0; // timer for next frame grab
+    double frame_time = 0.04; // 1/25 seconds of time
+
     while(!glfwWindowShouldClose (hardware.window)) {
+
+        //timing calculation
+        static double previous_seconds = glfwGetTime ();
+        static double current_seconds = glfwGetTime ();
+        static double elapsed_seconds = current_seconds - previous_seconds;
+        previous_seconds = current_seconds;
+        current_seconds  = glfwGetTime ();
+
+
+        if (dump_video) {
+            // elapsed_seconds is seconds since last loop iteration
+            video_timer += elapsed_seconds;
+            video_dump_timer += elapsed_seconds;
+            // only record 10s of video, then quit
+            if (video_timer > 10.0) {
+                break;
+            }
+        }
+
+
+
         glEnable(GL_CLIP_DISTANCE0);
         updateMovement(&camera);
 
@@ -626,7 +729,7 @@ int main () {
         camera.viewMatrix.m[13] +=reflectionDistance;
         meshMatrix =camera.viewMatrix* s;
         glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, 1);
+        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, 1 );
         glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
         glBindVertexArray(meshVao);
         glEnableVertexAttribArray(0);
@@ -727,11 +830,7 @@ int main () {
         glBindVertexArray(0);
 
         //render the reflection texture
-        static double previous_seconds = glfwGetTime ();
-        static double current_seconds = glfwGetTime ();
-        static double elapsed_seconds = current_seconds - previous_seconds;
-        previous_seconds = current_seconds;
-        current_seconds  = glfwGetTime ();
+
 
         moveFactor += (WAVE_SPEED *  elapsed_seconds * 500);
         moveFactor = fmod(moveFactor, 1.0);
@@ -777,9 +876,28 @@ int main () {
         glBindVertexArray(0);*/
 
         glfwPollEvents();
+
+        if (GLFW_PRESS == glfwGetKey (hardware.window, GLFW_KEY_ENTER)) {
+            dump_video = true;
+        }
+
+
+
+        if (GLFW_PRESS == glfwGetKey (hardware.window, GLFW_KEY_SPACE)) {
+            assert (screencapture (&hardware));
+        }
+
         if (GLFW_PRESS == glfwGetKey(hardware.window, GLFW_KEY_ESCAPE)) {
             glfwSetWindowShouldClose(hardware.window, 1);
         }
+
+        if (dump_video) { // check if recording mode is enabled
+            while (video_dump_timer > frame_time) {
+                grab_video_frame (&hardware); // 25 Hz so grab a frame
+                video_dump_timer -= frame_time;
+            }
+        }
+
         glfwSwapBuffers(hardware.window);
     }
 
@@ -797,6 +915,11 @@ int main () {
     glDeleteFramebuffers(1, &refractionFrameBuffer);
     glDeleteTextures(1, &refractionTexture);
     glDeleteTextures(1, &refractionDepthTexture);
+
+    if(dump_video) {
+        dump_video_frames(&hardware);
+    }
+
 
     /* close GL context and any other GLFW resources */
     glfwTerminate();
@@ -897,9 +1020,6 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
                         break;
                 }
             }
-            break;
-        case GLFW_KEY_ENTER: {
-        }
             break;
         case GLFW_KEY_1:state = STATE_POSITION;   break;
         case GLFW_KEY_2:state = STATE_ORIENTATION;break;

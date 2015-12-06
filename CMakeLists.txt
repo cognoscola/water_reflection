@@ -34,7 +34,7 @@ set(SOURCE_FILES
         onScreenObjects.h
         utils/io/stb_image.cpp utils/io/stb_image.h
         skybox/skybox.h
-        camera/camera.cpp camera/camera.h )
+        camera/camera.cpp camera/camera.h utils/io/stb_image_write.cpp utils/io/stb_image_write.h)
 #set(SOURCE_FILES main.cpp __add_other_cpp_files_here__)
 
 #set additional libraries
