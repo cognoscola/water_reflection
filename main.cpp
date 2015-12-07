@@ -1,27 +1,21 @@
 #include "main.h"
 
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <utils/io/stb_image.h>
 #include <skybox/skybox.h>
 #include <platform/glfw_launcher.h>
 #include <utils/io/stb_image_write.h>
+#include <mesh/mesh.h>
 
 #define PI 3.14159265359
 #define DEG_TO_RAD (2.0 * PI) / 360.0
 
 #define SCREENSHOT_FILE "/home/alvaregd/Documents/Games/water_reflection/build/screenshot.png"
 
-#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/floating_island.obj"
 
 #define WATER_VERTEX "/home/alvaregd/Documents/Games/water_reflection/water/water.vert"
 #define WATER_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/water/water.frag"
 
-#define MESH_VERTEX "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.vert"
-#define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
 
-#define CUP_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/ao_colour.png"
 #define DUDV_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/waterDUDV.png"
 #define NORMALMAP_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/normalMap.png"
 
@@ -160,108 +154,6 @@ GLuint createFrameBuffer(){
 
 }
 
-bool load_mesh(const char* fileName, GLuint* vao, int *point_count){
-
-    const aiScene *scene = aiImportFile(fileName, aiProcess_Triangulate);
-    if (!scene) {
-        fprintf(stderr, "ERROR: reading mesh %s\n", fileName);
-        return false;
-    }
-
-    printf(" %i animations\n", scene->mNumAnimations);
-    printf(" %i Cameras\n", scene->mNumCameras);
-    printf(" %i lights\n", scene->mNumLights);
-    printf(" %i Materials\n", scene->mNumMaterials);
-    printf(" %i Meshes\n", scene->mNumMeshes);
-    printf(" %i textures\n", scene->mNumTextures);
-
-    /*get the first mesh */
-    const aiMesh* mesh = scene->mMeshes[0];
-    printf("  %i vertices in mesh[0]\n", mesh->mNumVertices);
-
-    /**pass back the mesh count */
-    *point_count  = mesh->mNumVertices;
-
-    /* generate */
-    glGenVertexArrays(1, vao);
-    glBindVertexArray(*vao);
-
-    /** make the data contiguous */
-    GLfloat * points = NULL;
-    GLfloat * normals = NULL;
-    GLfloat * texcoords = NULL;
-
-    if (mesh->HasPositions()) {
-        points = (GLfloat *) malloc(*point_count * 3 * sizeof(GLfloat));
-        for (int i = 0; i < *point_count; ++i) {
-            const aiVector3D *vp = &(mesh->mVertices[i]);
-            points[i * 3 + 0] = (GLfloat)vp->x;
-            points[i * 3 + 1] = (GLfloat)vp->y;
-            points[i * 3 + 2] = (GLfloat)vp->z;
-        }
-    }
-
-    if (mesh->HasNormals()) {
-        normals = (GLfloat *) malloc(*point_count * 3 * sizeof(GLfloat));
-        for (int i = 0; i < *point_count; ++i) {
-            const aiVector3D *vp = &(mesh->mNormals[i]);
-            normals[i * 3 + 0] = (GLfloat)vp->x;
-            normals[i * 3 + 1] = (GLfloat)vp->y;
-            normals[i * 3 + 2] = (GLfloat)vp->z;
-
-        }
-    }
-
-    if (mesh->HasTextureCoords(0)) {
-        texcoords = (GLfloat *) malloc(*point_count * 2 * sizeof(GLfloat));
-        for (int i = 0; i < *point_count; ++i) {
-            const aiVector3D *vp = &(mesh->mTextureCoords[0][i]);
-            texcoords[i * 2 + 0] = (GLfloat)vp->x;
-            texcoords[i * 2 + 1] = (GLfloat)vp->y;
-
-        }
-    }
-
-    /** make vbos*/
-    if (mesh->HasPositions()) {
-        GLuint vbo;
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, 3 * *point_count * sizeof(GLfloat), points, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-        glEnableVertexAttribArray(0);
-        free(points);
-    }
-
-    if (mesh->HasNormals()) {
-        GLuint vbo;
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, 3 * *point_count * sizeof(GLfloat), normals, GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-        glEnableVertexAttribArray(1);
-        free(normals);
-    }
-
-    if (mesh->HasTextureCoords(0)) {
-        GLuint vbo;
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, 2 * *point_count * sizeof(GLfloat), texcoords, GL_STATIC_DRAW);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-        glEnableVertexAttribArray(2);
-        free(texcoords);
-    }
-
-    if (mesh->HasTangentsAndBitangents()) {
-
-    }
-
-    aiReleaseImport(scene);
-    printf("Mesh loaded\n");
-    return true;
-}
-
 
 GLuint getTextureFromFile(const char* filename) {
 
@@ -280,7 +172,6 @@ GLuint getTextureFromFile(const char* filename) {
         fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensions\n", filename);
     }
     printf("Found texture, size:%dx%d\n", x,y);
-
 
     //flip the image
     int width_in_bytes = x *4;
@@ -320,7 +211,6 @@ int main () {
     GLuint refractionTexture;
     GLuint refractionDepthTexture;
 
-    GLuint meshTextureID;
     GLuint dudvTexture;
     GLuint normalMapTexture;
     //start logger system
@@ -332,14 +222,6 @@ int main () {
 
     reserve_video_memory (&hardware);
 
-    //SCENE OBJECTS
-
-
-    GLuint meshVao;
-    int pointCount;
-    assert(load_mesh(MESH_FILE, &meshVao, &pointCount));
-
-    meshTextureID = getTextureFromFile(CUP_TEXTURE);
     dudvTexture = getTextureFromFile(DUDV_FILE);
     normalMapTexture = getTextureFromFile(NORMALMAP_FILE);
 
@@ -427,19 +309,11 @@ int main () {
     glfwSetKeyCallback(hardware.window, key_callback);
     glfwSetInputMode(hardware.window,GLFW_STICKY_KEYS, 1);
 
-    GLuint mesh_shader = create_programme_from_files(MESH_VERTEX, MESH_FRAGMENT);
     GLuint water_shader = create_programme_from_files(WATER_VERTEX, WATER_FRAGMENT);
-//    skyLoadShaderProgram(&sky); //TODO
-
 
     /* get version info */
     glEnable (GL_DEPTH_TEST); /* enable depth-testing */
 
-    //create VAO/VBO for the SKYBOX
-//    skyCreateVbo(&sky); //TODO
-//    skyCreateVao(&sky); //TODO
-
-    // camera stuff
 
     float near = 0.1f;
     float far = 200.0f;
@@ -462,6 +336,10 @@ int main () {
     Skybox sky;
     skyInit(&sky, proj_mat);
 
+    //SCENE OBJECTS
+    Mesh terrain;
+    meshInit(&terrain, proj_mat);
+
     camera = {};
     //create view matrix
     camera.pos[0] = 0.0f; // don't start at zero, or we will be too close
@@ -483,14 +361,6 @@ int main () {
 //    glUniformMatrix4fv(sky.projection_mat_location, 1, GL_FALSE, proj_mat);
 //    glUniformMatrix4fv(sky.view_mat_location , 1, GL_FALSE, camera.viewMatrix.m);
 
-    glUseProgram(mesh_shader);
-    GLint location_meshViewMatrix  = glGetUniformLocation(mesh_shader, "modelViewMatrix");
-    GLint location_meshProjMatrix  = glGetUniformLocation(mesh_shader, "projectionMatrix");
-    GLint location_clipPlane       = glGetUniformLocation(mesh_shader, "plane");
-
-    glUniform4f(location_clipPlane, 0.0f, -1.0f, 0.0f, 1.0f);
-    glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, camera.viewMatrix.m);
-    glUniformMatrix4fv(location_meshProjMatrix , 1, GL_FALSE, proj_mat);
 
     glUseProgram(water_shader);
     GLint location_reflectionTexture    = glGetUniformLocation(water_shader, "reflectionTexture");
@@ -523,22 +393,19 @@ int main () {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 
-    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
-
-    mat4 s = scale(identity_mat4(), vec3(10,10,10));
-    mat4 meshMatrix = camera.viewMatrix * s;
 
     //water stuff
     GLfloat waterheight = 5.0f;
     GLfloat reflectionDistance;
 
+
+    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
     mat4 waterT = translate(identity_mat4(), vec3(100.0f,waterheight,55.0f));
     create_versor(quat, 90, -1.0f, 0.0f, 0.0f);
     mat4 waterS = scale(identity_mat4(),vec3(200.0f,140.0f,0) );
     mat4 waterR;
     quat_to_mat4(waterR.m, quat);
     mat4 waterModelViewMatrix ;
-
     double moveFactor = 0;
 
     // initialise timers
@@ -555,7 +422,6 @@ int main () {
         double elapsed_seconds = current_seconds - previous_seconds;
         previous_seconds = current_seconds;
 
-
         if(dump_video) {
             // elapsed_seconds is seconds since last loop iteration
             video_timer += elapsed_seconds;
@@ -570,95 +436,35 @@ int main () {
         glEnable(GL_CLIP_DISTANCE0);
         updateMovement(&camera);
 
-        //render to the reflection buffer
+        //RENDER THE REFLECTION BUFFER
         bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        //calcualte the camera's height while rendering the refleciton
-        reflectionDistance = 2 * (camera.pos[1] - waterheight);
-
+        reflectionDistance = 2 * (camera.pos[1] - waterheight); //camera's height while rendering the refleciton
         calculatePitch(-camera.pitch);
         calculateViewMatrices(&camera);
-        //set the new view matrix @ the shader level
-
         camera.viewMatrix.m[13] +=reflectionDistance;
-        meshMatrix =camera.viewMatrix* s;
-        glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f, 1.0f, 0.0f, 0.5 );
-        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
-        glBindVertexArray(meshVao);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, meshTextureID);
-        glDrawArrays(GL_TRIANGLES, 0, pointCount);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
-
+        meshRender(&terrain,&camera);
         skyUpdate(&sky);
         skyRender(&sky, &camera);
-        //draw the sky box
-
         camera.viewMatrix.m[13] -=reflectionDistance;
         calculatePitch(camera.pitch);
         calculateViewMatrices(&camera);
-
-        //we are done rendering, now
         unbindCurrentFrameBuffer(&hardware);
 
-        //render to the refraction buffer
+        //RENDER THE REFRACTION BUFFER
         bindFrameBufer(refractionFrameBuffer, REFRACTION_WIDTH, REFRACTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        meshMatrix =camera.viewMatrix* s;
-        glUseProgram(mesh_shader);
-        glUniform4f(location_clipPlane, 0.0f,-1.0f, 0.0f, waterheight);
-        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
-        glBindVertexArray(meshVao);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, meshTextureID);
-        glDrawArrays(GL_TRIANGLES, 0, pointCount);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
-
-        //draw the sky box
+        meshRender(&terrain,&camera);
         skyRender(&sky, &camera);
-
-        //we are done rendering the water, now render normally
         unbindCurrentFrameBuffer(&hardware);
 
-        //Render to the default buffer
+        //RENDER THE DEFAULT BUFFER
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDisable(GL_CLIP_DISTANCE0);
-
-        //render the mesh
-        meshMatrix =camera.viewMatrix* s;
-        glUseProgram(mesh_shader);
-        glUniformMatrix4fv(location_meshViewMatrix, 1, GL_FALSE, meshMatrix.m);
-        glUniform4f(location_clipPlane, 0.0f, -1.0f, 0.0f, 1000.0f);
-        glBindVertexArray(meshVao);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, meshTextureID);
-        glDrawArrays(GL_TRIANGLES, 0, pointCount);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
-
-        //draw the sky box
+        meshRender(&terrain,&camera);
         skyRender(&sky, &camera);
-        //render the reflection texture
         moveFactor += (WAVE_SPEED *  0.000003 * 500);
         moveFactor = fmod(moveFactor, 1.0);
-
         glUseProgram(water_shader);
         waterModelViewMatrix = camera.viewMatrix * waterT * waterR * waterS;
         glUniform1f(location_moveFactor,        moveFactor);
@@ -686,7 +492,6 @@ int main () {
         glDisableVertexAttribArray(3);
         glBindVertexArray(0);
 
-
         glfwPollEvents();
 
         if (GLFW_PRESS == glfwGetKey (hardware.window, GLFW_KEY_P)) {
@@ -711,13 +516,15 @@ int main () {
         glfwSwapBuffers(hardware.window);
     }
 
+    glDeleteVertexArrays(1, &waterReflectionVao);
+    glDeleteVertexArrays(1, &terrain.vao);
+    glDeleteVertexArrays(1, &sky.vao);
+
+    glDeleteBuffers(1, &sky.vbo);
+    glDeleteBuffers(1, &terrain.vbo);
     glDeleteBuffers(1, &reflectionVbo);
     glDeleteBuffers(1, &water_coords_vbo);
-    glDeleteVertexArrays(1, &waterReflectionVao);
 
-    glDeleteVertexArrays(1, &meshVao);
-    glDeleteVertexArrays(1, &sky.vao);
-    glDeleteBuffers(1, &sky.vbo);
 
     glDeleteFramebuffers(1, &reflectionFrameBuffer);
     glDeleteTextures(1, &reflectionTexture);
