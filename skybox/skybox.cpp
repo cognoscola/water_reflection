@@ -13,8 +13,7 @@ void skyInit(Skybox* sky, GLfloat* projection_matrix){
     glUseProgram(sky->shader);
     skyLoadCubeMapTextures(sky);
     skyGetUniforms(sky);
-    glUniformMatrix4fv(sky->projection_mat_location, 1, GL_FALSE, projection_matrix);
-
+    glUniformMatrix4fv(sky->location_projection_mat, 1, GL_FALSE, projection_matrix);
 }
 
 
@@ -138,9 +137,9 @@ void skyCreateVao(Skybox* sky){
 }
 
 void skyGetUniforms(Skybox* sky){
-    sky->projection_mat_location = glGetUniformLocation(sky->shader, "projectionMatrix");
-    sky->view_mat_location = glGetUniformLocation(sky->shader, "viewMatrix");
-    sky->model_mat_location = glGetUniformLocation(sky->shader, "modelMatrix");
+    sky->location_projection_mat = glGetUniformLocation(sky->shader, "projectionMatrix");
+    sky->location_view_mat = glGetUniformLocation(sky->shader, "viewMatrix");
+    sky->location_model_mat = glGetUniformLocation(sky->shader, "modelMatrix");
 }
 
 void skyUpdate(Skybox *sky){
@@ -165,8 +164,8 @@ void skyRender(Skybox *sky, Camera* camera){
     camera->viewMatrix.m[14] = 0;
 
     glUseProgram(sky->shader);
-    glUniformMatrix4fv(sky->model_mat_location, 1, GL_FALSE, sky->modelMatrix.m);
-    glUniformMatrix4fv(sky->view_mat_location, 1, GL_FALSE, camera->viewMatrix.m);
+    glUniformMatrix4fv(sky->location_model_mat, 1, GL_FALSE, sky->modelMatrix.m);
+    glUniformMatrix4fv(sky->location_view_mat, 1, GL_FALSE, camera->viewMatrix.m);
     glBindVertexArray(sky->vao);
     glEnableVertexAttribArray(0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, sky->texture);
@@ -178,4 +177,10 @@ void skyRender(Skybox *sky, Camera* camera){
     camera->viewMatrix.m[13] = y;
     camera->viewMatrix.m[14] = z;
 
+}
+
+void skyCleanUp(Skybox* sky){
+
+    glDeleteVertexArrays(1, &sky->vao);
+    glDeleteBuffers(1, &sky->vbo);
 }

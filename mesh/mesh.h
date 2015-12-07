@@ -16,8 +16,6 @@
 #define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
 
 
-//TODO seperate the modelview matrix into two matrices
-
 struct Mesh{
 
     GLuint shader;
@@ -41,6 +39,6 @@ bool meshLoadMeshFile(const char *fileName, GLuint *vao, int *point_count);
 void meshLoadTexture(Mesh* mesh);
 void meshLoadShaderProgram(Mesh * mesh);
 void meshGetUniforms(Mesh* mesh);
-void meshRender(Mesh* mesh, Camera* camera);
-
+void meshRender(Mesh* mesh, Camera* camera, GLfloat planeHeight);
+void meshCleanUp(Mesh *mesh);
 #endif //WATER_REFLECTION_MESH_H

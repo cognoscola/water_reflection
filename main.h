@@ -18,8 +18,6 @@
 #include <vector>
 #include "camera/camera.h"
 
-
-
 struct Input{
     bool wPressed;
     bool sPressed;

@@ -1,31 +1,15 @@
 #include "main.h"
 
-#include <utils/io/stb_image.h>
 #include <skybox/skybox.h>
 #include <platform/glfw_launcher.h>
 #include <utils/io/stb_image_write.h>
 #include <mesh/mesh.h>
+#include <water/water.h>
 
 #define PI 3.14159265359
 #define DEG_TO_RAD (2.0 * PI) / 360.0
 
 #define SCREENSHOT_FILE "/home/alvaregd/Documents/Games/water_reflection/build/screenshot.png"
-
-
-#define WATER_VERTEX "/home/alvaregd/Documents/Games/water_reflection/water/water.vert"
-#define WATER_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/water/water.frag"
-
-
-#define DUDV_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/waterDUDV.png"
-#define NORMALMAP_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/normalMap.png"
-
-#define REFLECTION_WIDTH  320
-#define REFLECTION_HEIGHT 180
-
-#define REFRACTION_WIDTH 1280
-#define REFRACTION_HEIGHT 120
-
-#define WAVE_SPEED 0.03
 
 static void calculatePitch(GLfloat angle);
 
@@ -98,206 +82,16 @@ bool screencapture (Hardware* hardware) {
     return true;
 }
 
-void unbindCurrentFrameBuffer(Hardware* hardware) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, hardware->vmode->width, hardware->vmode->height);
-}
-
-//call this function to tell opengl to render to our framebuffer object
-void bindFrameBufer(GLuint frameBuffer, int width, int height) {
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-    glViewport(0, 0, width, height);
-}
-
-GLuint createTextureAttachment(int width, int height){
-
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glFramebufferTexture(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0, textureID,0);
-    return textureID;
-}
-
-GLuint createDepthTextureAttachment(int width, int height){
-
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glFramebufferTexture(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT, textureID,0);
-    return textureID;
-}
-
-GLuint createDepthBufferAttachment(int width, int height){
-
-    GLuint depthBuffer;
-    glGenRenderbuffers(1, &depthBuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER, depthBuffer);
-    return depthBuffer;
-}
-
-GLuint createFrameBuffer(){
-
-    GLuint frameBufferID;
-    glGenFramebuffers(1,&frameBufferID);
-    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferID);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-    return frameBufferID;
-
-}
-
-
-GLuint getTextureFromFile(const char* filename) {
-
-    GLuint texID;
-    glGenTextures(1, &texID);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texID);
-
-    int x, y, n;
-    int force_channels = 4;
-    unsigned char *image_data = stbi_load(filename, &x, &y, &n, force_channels);
-    if (!image_data) {
-        fprintf(stderr, "ERROR: could not load %s\n", filename);
-    }
-    if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
-        fprintf(stderr, "WARNING:texture %s is not a power of 2 dimensions\n", filename);
-    }
-    printf("Found texture, size:%dx%d\n", x,y);
-
-    //flip the image
-    int width_in_bytes = x *4;
-    unsigned char *top = NULL;
-    unsigned char *bottom = NULL;
-    unsigned char temp = 0;
-    int half_height = y/2;
-
-    for (int row = 0; row < half_height; row++) {
-        top = image_data + row * width_in_bytes;
-        bottom = image_data + (y - row - 1) * width_in_bytes;
-        for (int col = 0; col < width_in_bytes; col++) {
-            temp = *top;
-            *top = *bottom;
-            *bottom = temp;
-            top++;
-            bottom++;
-        }
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
-    free(image_data);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    return texID;
-}
-
-int main () {
-
-    GLuint reflectionFrameBuffer;
-    GLuint reflectionTexture;
-    GLuint reflectionDepthBuffer;
-    GLuint refractionFrameBuffer;
-    GLuint refractionTexture;
-    GLuint refractionDepthTexture;
-
-    GLuint dudvTexture;
-    GLuint normalMapTexture;
-    //start logger system
-    assert(restart_gl_log());
+int main() {
 
     Hardware hardware;
+    //start logger system
+    assert(restart_gl_log());
     //create our main window
     assert(start_gl(&hardware));
 
     reserve_video_memory (&hardware);
 
-    dudvTexture = getTextureFromFile(DUDV_FILE);
-    normalMapTexture = getTextureFromFile(NORMALMAP_FILE);
-
-    GLfloat texcoords[] = {
-            1.0f,1.0f,
-            0.0f,1.0f,
-            0.0f,0.0f,
-            0.0f,0.0f,
-            1.0f, 0.0f,
-            1.0f,1.0f,
-
-    };
-
-    GLfloat reflection_points[] = {
-            -0.75f, 0.25f,  0.0f,
-            -0.25f, 0.25f,  0.0f,
-            -0.25f, 0.75f,  0.0f,
-            -0.25f, 0.75f,  0.0f,
-            -0.75f, 0.75f,  0.0f,
-            -0.75f, 0.25f,  0.0f
-    };
-    GLfloat refraction_points[] = {
-            0.25f, 0.25f,  0.0f,
-            0.75f, 0.25f,  0.0f,
-            0.75f, 0.75f,  0.0f,
-            0.75f, 0.75f,  0.0f,
-            0.25f, 0.75f,  0.0f,
-            0.25f, 0.25f,  0.0f
-    };
-
-    GLuint reflectionVbo = 0;
-    glGenBuffers(1, &reflectionVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, reflectionVbo);
-    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), reflection_points, GL_STATIC_DRAW);
-
-    GLuint refractionVbo = 0;
-    glGenBuffers(1, &refractionVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, refractionVbo);
-    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), refraction_points, GL_STATIC_DRAW);
-
-    GLuint water_coords_vbo;
-    glGenBuffers(1, &water_coords_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, water_coords_vbo);
-    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), texcoords, GL_STATIC_DRAW);
-
-    GLuint waterReflectionVao = 0;
-    glGenVertexArrays(1, &waterReflectionVao);
-    glBindVertexArray(waterReflectionVao);
-    glBindBuffer(GL_ARRAY_BUFFER, reflectionVbo);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-    glBindBuffer(GL_ARRAY_BUFFER, water_coords_vbo);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-
-    GLuint waterRefractionVao = 0;
-    glGenVertexArrays(1, &waterRefractionVao);
-    glBindVertexArray(waterRefractionVao);
-    glBindBuffer(GL_ARRAY_BUFFER, refractionVbo);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-    glBindBuffer(GL_ARRAY_BUFFER, water_coords_vbo);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-
-    //Create frame buffer object
-    reflectionFrameBuffer = createFrameBuffer();
-    reflectionTexture = createTextureAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
-    reflectionDepthBuffer = createDepthBufferAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
-    unbindCurrentFrameBuffer(&hardware);
-
-    refractionFrameBuffer = createFrameBuffer();
-    refractionTexture = createTextureAttachment(REFRACTION_WIDTH, REFRACTION_HEIGHT);
-    refractionDepthTexture = createDepthTextureAttachment(REFRACTION_WIDTH, REFRACTION_HEIGHT);
-    unbindCurrentFrameBuffer(&hardware);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         printf("Frame Buffer messed up\n");
@@ -309,7 +103,6 @@ int main () {
     glfwSetKeyCallback(hardware.window, key_callback);
     glfwSetInputMode(hardware.window,GLFW_STICKY_KEYS, 1);
 
-    GLuint water_shader = create_programme_from_files(WATER_VERTEX, WATER_FRAGMENT);
 
     /* get version info */
     glEnable (GL_DEPTH_TEST); /* enable depth-testing */
@@ -349,64 +142,19 @@ int main () {
     camera.Rpitch = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.Ryaw = rotate_y_deg (identity_mat4 (), -camera.yaw);
     camera.viewMatrix = camera.Rpitch * camera.T;
-
-
     glUniformMatrix4fv(camera.view_mat_location, 1, GL_FALSE, camera.viewMatrix.m);
     glUniformMatrix4fv(camera.proj_mat_location, 1, GL_FALSE, proj_mat);
 
-    //TODO
-//    glUseProgram(sky.shader);
-//    skyLoadCubeMapTextures(&sky);
-//    skyGetUniforms(&sky);
-//    glUniformMatrix4fv(sky.projection_mat_location, 1, GL_FALSE, proj_mat);
-//    glUniformMatrix4fv(sky.view_mat_location , 1, GL_FALSE, camera.viewMatrix.m);
-
-
-    glUseProgram(water_shader);
-    GLint location_reflectionTexture    = glGetUniformLocation(water_shader, "reflectionTexture");
-    GLint location_refractionTexture    = glGetUniformLocation(water_shader, "refractionTexture");
-    GLint location_dudv                 = glGetUniformLocation(water_shader, "dudvMap");
-    GLint location_waterModelViewMatrix = glGetUniformLocation(water_shader, "modelViewMatrix");
-    GLint location_waterProjMatrix      = glGetUniformLocation(water_shader, "projectionMatrix");
-    GLint location_moveFactor           = glGetUniformLocation(water_shader, "moveFactor");
-    GLint location_cameraPosition       = glGetUniformLocation(water_shader, "cameraPosition");
-    GLint location_normalMap            = glGetUniformLocation(water_shader, "normalMap");
-    GLint location_lightColour          = glGetUniformLocation(water_shader, "lightColour");
-    GLint location_lightPosition        = glGetUniformLocation(water_shader, "lightPosition");
-    GLint location_depthMap             = glGetUniformLocation(water_shader, "depthMap");
-
-    glUniformMatrix4fv(location_waterProjMatrix , 1, GL_FALSE, proj_mat);
-
-    glUniform3f(location_lightColour , 1.0f,1.0f,1.0f);
-    glUniform3f(location_lightPosition , 50.0f,100.0f,50.0f);
-
-    glUniform1i(location_reflectionTexture,0 );
-    glUniform1i(location_refractionTexture,1 );
-    glUniform1i(location_dudv,2 );
-    glUniform1i(location_normalMap,3);
-    glUniform1i(location_depthMap,4);
+    Water water;
+    waterInit(&water, &hardware, proj_mat);
 
     //load up information of
-
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-
-
     //water stuff
-    GLfloat waterheight = 5.0f;
     GLfloat reflectionDistance;
-
-
-    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
-    mat4 waterT = translate(identity_mat4(), vec3(100.0f,waterheight,55.0f));
-    create_versor(quat, 90, -1.0f, 0.0f, 0.0f);
-    mat4 waterS = scale(identity_mat4(),vec3(200.0f,140.0f,0) );
-    mat4 waterR;
-    quat_to_mat4(waterR.m, quat);
-    mat4 waterModelViewMatrix ;
-    double moveFactor = 0;
 
     // initialise timers
     bool dump_video = false;
@@ -437,13 +185,13 @@ int main () {
         updateMovement(&camera);
 
         //RENDER THE REFLECTION BUFFER
-        bindFrameBufer(reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
+        bindFrameBufer(water.reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        reflectionDistance = 2 * (camera.pos[1] - waterheight); //camera's height while rendering the refleciton
+        reflectionDistance = 2 * (camera.pos[1] - water.waterHeight); //camera's height while rendering the refleciton
         calculatePitch(-camera.pitch);
         calculateViewMatrices(&camera);
         camera.viewMatrix.m[13] +=reflectionDistance;
-        meshRender(&terrain,&camera);
+        meshRender(&terrain,&camera,0.5);
         skyUpdate(&sky);
         skyRender(&sky, &camera);
         camera.viewMatrix.m[13] -=reflectionDistance;
@@ -452,45 +200,19 @@ int main () {
         unbindCurrentFrameBuffer(&hardware);
 
         //RENDER THE REFRACTION BUFFER
-        bindFrameBufer(refractionFrameBuffer, REFRACTION_WIDTH, REFRACTION_HEIGHT);
+        bindFrameBufer(water.refractionFrameBuffer, REFRACTION_WIDTH, REFRACTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        meshRender(&terrain,&camera);
+        meshRender(&terrain,&camera, 5.0f); //TODO get the water height
         skyRender(&sky, &camera);
         unbindCurrentFrameBuffer(&hardware);
 
         //RENDER THE DEFAULT BUFFER
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDisable(GL_CLIP_DISTANCE0);
-        meshRender(&terrain,&camera);
+        meshRender(&terrain,&camera,1000.0f);
         skyRender(&sky, &camera);
-        moveFactor += (WAVE_SPEED *  0.000003 * 500);
-        moveFactor = fmod(moveFactor, 1.0);
-        glUseProgram(water_shader);
-        waterModelViewMatrix = camera.viewMatrix * waterT * waterR * waterS;
-        glUniform1f(location_moveFactor,        moveFactor);
-        glUniform3f(location_cameraPosition,    camera.pos[0],camera.pos[1],camera.pos[2]);
-        glUniformMatrix4fv(location_waterModelViewMatrix  , 1, GL_FALSE, waterModelViewMatrix.m);
-        glBindVertexArray(waterReflectionVao);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glEnableVertexAttribArray(3);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, reflectionTexture);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, refractionTexture);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, dudvTexture);
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, normalMapTexture);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, refractionDepthTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
-        glDisableVertexAttribArray(3);
-        glBindVertexArray(0);
+        waterUpdate(&water);
+        waterRender(&water, &camera);
 
         glfwPollEvents();
 
@@ -516,27 +238,13 @@ int main () {
         glfwSwapBuffers(hardware.window);
     }
 
-    glDeleteVertexArrays(1, &waterReflectionVao);
-    glDeleteVertexArrays(1, &terrain.vao);
-    glDeleteVertexArrays(1, &sky.vao);
-
-    glDeleteBuffers(1, &sky.vbo);
-    glDeleteBuffers(1, &terrain.vbo);
-    glDeleteBuffers(1, &reflectionVbo);
-    glDeleteBuffers(1, &water_coords_vbo);
-
-
-    glDeleteFramebuffers(1, &reflectionFrameBuffer);
-    glDeleteTextures(1, &reflectionTexture);
-    glDeleteRenderbuffers(1, &reflectionDepthBuffer);
-    glDeleteFramebuffers(1, &refractionFrameBuffer);
-    glDeleteTextures(1, &refractionTexture);
-    glDeleteTextures(1, &refractionDepthTexture);
+    waterCleanUp(&water);
+    meshCleanUp(&terrain);
+    skyCleanUp(&sky);
 
     if(dump_video) {
         dump_video_frames(&hardware);
     }
-
 
     /* close GL context and any other GLFW resources */
     glfwTerminate();
@@ -629,8 +337,6 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
     camera.pitch += position_y_difference *camera.signal_amplifier;
 
     //calculate rotation sequence
-//    create_versor(quat, camera.pitch, 1.0f, 0.0f, 0.0f);
-//    quat_to_mat4(camera.Rpitch.m, quat);
     calculatePitch(camera.pitch);
     create_versor(quat, camera.yaw, 0.0f, 1.0f, 0.0f);
     quat_to_mat4(camera.Ryaw.m,quat);
@@ -641,22 +347,6 @@ static void calculatePitch(GLfloat angle){
     GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
     create_versor(quat, angle, 1.0f, 0.0f, 0.0f);
     quat_to_mat4(camera.Rpitch.m, quat);
-}
-
-/**
- * Change the height of the floor grid
- */
-static void updateGridHeight(Grid* grid){
-
-    //Modify the value
-    glBindBuffer(GL_ARRAY_BUFFER, grid->vertexVbo);
-    GLfloat *data = (GLfloat *) glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE);
-    if (data != (GLfloat *) NULL) {
-        for (int i = 0; i < (grid->numberOfLines*2); ++i) {
-            data[i * 3 + 1 ] =grid->heightValue ;
-        }
-        glUnmapBuffer(GL_ARRAY_BUFFER);
-    }
 }
 
 /**

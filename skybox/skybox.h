@@ -23,9 +23,9 @@ struct Skybox{
     GLuint texture;
     GLuint vao;
     GLuint vbo;
-    GLint projection_mat_location;
-    GLint view_mat_location;
-    GLint model_mat_location;
+    GLint location_projection_mat;
+    GLint location_view_mat;
+    GLint location_model_mat;
     mat4 modelMatrix;
 
     GLfloat angle;
@@ -39,5 +39,5 @@ void skyCreateVao(Skybox* sky);
 void skyGetUniforms(Skybox* sky);
 void skyRender(Skybox *sky, Camera* camera);
 void skyUpdate(Skybox *sky);
-
+void skyCleanUp(Skybox* sky);
 #endif //SIMPLE_LEVEL_EDITOR_SKYBOX_SHADER_H

@@ -160,10 +160,10 @@ void meshGetUniforms(Mesh* mesh){
     mesh->location_clip_plane      = glGetUniformLocation(mesh->shader, "plane");
 }
 
-void meshRender(Mesh* mesh, Camera* camera){
+void meshRender(Mesh* mesh, Camera* camera, GLfloat planeHeight){
 
     glUseProgram(mesh->shader);
-    glUniform4f(mesh->location_clip_plane, 0.0f, 1.0f, 0.0f, 0.5 );
+    glUniform4f(mesh->location_clip_plane, 0.0f, 1.0f, 0.0f, planeHeight);
     glUniformMatrix4fv(mesh->location_view_mat, 1, GL_FALSE, camera->viewMatrix.m);
     glUniformMatrix4fv(mesh->location_model_mat, 1, GL_FALSE, mesh->modelMatrix.m);
     glBindVertexArray(mesh->vao);
@@ -176,5 +176,11 @@ void meshRender(Mesh* mesh, Camera* camera){
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+
+}
+
+void meshCleanUp(Mesh *mesh){
+    glDeleteVertexArrays(1, &mesh->vao);
+    glDeleteBuffers(1, &mesh->vbo);
 
 }
