@@ -33,7 +33,7 @@ set(SOURCE_FILES
         utils/io/shader_loader.cpp utils/io/shader_loader.h
         onScreenObjects.h
         utils/io/stb_image.cpp utils/io/stb_image.h
-        skybox/skybox.h
+        skybox/skybox.h skybox/skybox.cpp
         camera/camera.cpp camera/camera.h utils/io/stb_image_write.cpp utils/io/stb_image_write.h)
 #set(SOURCE_FILES main.cpp __add_other_cpp_files_here__)
 
