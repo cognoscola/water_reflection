@@ -57,6 +57,7 @@ struct Water {
 
     mat4 modelMatrix;
     GLfloat waterHeight;
+    GLfloat reflectionDistance;
     double moveFactor;
 };
 

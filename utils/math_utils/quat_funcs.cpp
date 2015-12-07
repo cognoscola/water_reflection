@@ -5,6 +5,7 @@
 #include "quat_funcs.h"
 #include "maths_funcs.h"
 #include <math.h>
+#include <GL/gl.h>
 
 /* create a unit quaternion q from an angle in degrees a, and an axis x,y,z */
 void create_versor (float* q, float a, float x, float y, float z) {
@@ -68,4 +69,10 @@ void mult_quat_quat (float* result, float* r, float* s) {
                 s[2] * r[1] + s[3] * r[0];
     // re-normalise in case of mangling
     normalise_quat (result);
+}
+
+ void calculateRotationMatrix(GLfloat angle, mat4 *matrix, int type){
+    GLfloat quat[] = {0.0f,0.0f,0.0f,0.0f};
+    create_versor(quat, angle, type == PITCH , type == YAW, type == ROLL);
+    quat_to_mat4(matrix->m, quat);
 }

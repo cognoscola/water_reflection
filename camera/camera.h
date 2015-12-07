@@ -5,14 +5,13 @@
 #ifndef WATER_REFLECTION_CAMERA_H
 #define WATER_REFLECTION_CAMERA_H
 
+#include <input/input.h>
 #include "utils/math_utils/maths_funcs.h"
 #include "GL/gl.h"
 
-struct Camera;
-struct Input;
+struct Hardware;
 
 struct Camera{
-
 
     float pos[3]; // don't start at zero, or we will be too close
     float yaw = 0.0f; // y-rotation in degrees
@@ -33,6 +32,11 @@ struct Camera{
     double move_angle;
 
     vec3 velocity; //actor's velocity
+
+    GLfloat* proj_mat;
 };
 
+void cameraInit(Camera * camera, Hardware* hardware);
+void updateMovement(Camera* camera, Input* input);
+void calculateViewMatrices(Camera *camera);
 #endif //WATER_REFLECTION_CAMERA_H

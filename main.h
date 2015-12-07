@@ -14,24 +14,17 @@
 #include <utils/log_utils/logger.h>
 #include <utils/io/shader_loader.h>
 #include <array>
-#include "onScreenObjects.h"
 #include <vector>
 #include "camera/camera.h"
 
-struct Input{
-    bool wPressed;
-    bool sPressed;
-    bool aPressed;
-    bool dPressed;
-};
+#define PITCH 0
+#define YAW  1
+#define ROLL  2
 
 
-static Camera camera;
 static Input input;
+static Camera camera;
 
 static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos);
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-static void calculateViewMatrices(Camera *camera);
-static void updateMovement(Camera* camera);
-
 #endif //SIMPLE_LEVEL_EDITOR_`_H_H

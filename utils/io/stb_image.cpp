@@ -38,7 +38,6 @@
 #define STBI_NO_ZLIB
 #endif
 
-
 #include <stdarg.h>
 #include <stddef.h> // ptrdiff_t on osx
 #include <stdlib.h>
