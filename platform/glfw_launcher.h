@@ -9,13 +9,13 @@
 #include <stdio.h>
 #include <utils/log_utils/logger.h>
 
-struct Hardware{
+struct Window {
     GLFWwindow* window;
     GLFWmonitor *mon;
     const GLFWvidmode* vmode;
 };
 
-bool start_gl(Hardware* hardware);
+bool start_gl(Window * hardware);
 void glfw_error_callback(int error, const char* description);
 
 

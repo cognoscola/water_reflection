@@ -8,12 +8,12 @@
 #define PI 3.14159265359
 #define DEG_TO_RAD (2.0 * PI) / 360.0
 
-void cameraInit(Camera * camera, Hardware* hardware){
+void cameraInit(Camera * camera, Window *window){
 
     float near = 0.1f;
-    float far = 200.0f;
+    float far = 300.0f;
     double fov = 67.0f * DEG_TO_RAD;
-    float aspect = (float)hardware->vmode->width /(float)hardware->vmode->height;
+    float aspect = (float) window->vmode->width / (float) window->vmode->height;
 
     // matrix components
     double range = tan (fov * 0.5f) * near;

@@ -24,6 +24,9 @@
 
 #define WAVE_SPEED 0.03
 
+/**
+ * Structure to hold informartion about our water surface
+ */
 struct Water {
 
     GLuint reflectionFrameBuffer;
@@ -42,6 +45,7 @@ struct Water {
 
     GLuint shader;
 
+    //shader variables
     GLint location_reflectionTexture;
     GLint location_refractionTexture;
     GLint location_dudv;
@@ -55,20 +59,21 @@ struct Water {
     GLint location_lightPosition;
     GLint location_depthMap;
 
+
     mat4 modelMatrix;
     GLfloat waterHeight;
     GLfloat reflectionDistance;
     double moveFactor;
 };
 
-void waterInit(Water *water, Hardware *hardware, GLfloat* proj_mat);
+void waterInit(Water *water, Window *hardware, GLfloat* proj_mat);
 void waterLoadTexture(Water* water, const char* name, int type);
 void waterCreateVao(Water* water);
 GLuint createFrameBuffer();
 GLuint createTextureAttachment(int width, int height);
 GLuint createDepthTextureAttachment(int width, int height);
 GLuint createDepthBufferAttachment(int width, int height);
-void unbindCurrentFrameBuffer(Hardware* hardware);
+void unbindCurrentFrameBuffer(Window * hardware);
 void bindFrameBufer(GLuint frameBuffer, int width, int height);
 void waterGetUniforms(Water* water);
 void waterUpdate(Water *water);

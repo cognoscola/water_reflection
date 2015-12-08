@@ -6,10 +6,9 @@
 #include <water/water.h>
 #include <utils/io/video.h>
 
-
 int main() {
 
-    Hardware hardware; //manage the window
+    Window hardware; //manage the window
     assert(restart_gl_log());  //restart the log system
     assert(start_gl(&hardware)); //start the glfw instance
 

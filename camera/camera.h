@@ -9,8 +9,12 @@
 #include "utils/math_utils/maths_funcs.h"
 #include "GL/gl.h"
 
-struct Hardware;
+struct Window;
 
+/**
+ * Holds information about the camera such as
+ * its position, orientation and projection
+ */
 struct Camera{
 
     float pos[3]; // don't start at zero, or we will be too close
@@ -36,7 +40,19 @@ struct Camera{
     GLfloat* proj_mat;
 };
 
-void cameraInit(Camera * camera, Hardware* hardware);
+/** initialize the camara
+ *  in - Camera object
+ *  in - Window object
+ **/
+void cameraInit(Camera * camera, Window *window);
+
+/**
+ * CalcCamera's position needs to change
+ */
 void updateMovement(Camera* camera, Input* input);
+
+/**
+ *
+ */
 void calculateViewMatrices(Camera *camera);
 #endif //WATER_REFLECTION_CAMERA_H

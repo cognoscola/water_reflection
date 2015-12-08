@@ -4,7 +4,7 @@
 
 #ifndef SIMPLE_LEVEL_EDITOR_HARDWARE_H
 #define SIMPLE_LEVEL_EDITOR_HARDWARE_H
-struct Hardware;
+struct Window;
 
 
 

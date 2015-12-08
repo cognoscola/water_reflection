@@ -5,7 +5,7 @@
 #include <GL/glew.h>
 #include "glfw_launcher.h"
 
-bool start_gl (Hardware* hardware) {
+bool start_gl (Window * hardware) {
 
     const GLubyte* renderer;
     const GLubyte* version;

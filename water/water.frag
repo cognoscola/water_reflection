@@ -43,7 +43,6 @@ void main () {
 	distortedTexCoords = textureCoords + vec2(distortedTexCoords.x, distortedTexCoords.y+moveFactor);
 	vec2 totalDistortion = (texture(dudvMap, distortedTexCoords).rg * 2.0 - 1.0) * waveStrength *  clamp(waterDepth/20.0, 0.0, 1.0);;
 
-
     refractTexCoords += totalDistortion;
 //    refractTexCoords  = clamp(reflectTexCoords, 0.001, 0.999);
 
@@ -62,8 +61,6 @@ void main () {
     vec3 viewVector = normalize(toCameraVector);
     float refractiveFactor = dot( viewVector,normal);
 //    refractiveFactor = pow(refractiveFactor, 10.0);
-
-
 
     //speculiar lighting calculation
 	vec3 reflectedLight = reflect(normalize(fromLightVector), normal);
