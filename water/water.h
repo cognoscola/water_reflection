@@ -25,7 +25,7 @@
 #define WAVE_SPEED 0.03
 
 /**
- * Structure to hold informartion about our water surface
+ * Structure to hold information about the water
  */
 struct Water {
 
@@ -59,7 +59,6 @@ struct Water {
     GLint location_lightPosition;
     GLint location_depthMap;
 
-
     mat4 modelMatrix;
     GLfloat waterHeight;
     GLfloat reflectionDistance;
@@ -67,7 +66,7 @@ struct Water {
 };
 
 void waterInit(Water *water, Window *hardware, GLfloat* proj_mat);
-void waterLoadTexture(Water* water, const char* name, int type);
+void waterLoadEffectTexture(Water *water, const char *name, int type);
 void waterCreateVao(Water* water);
 GLuint createFrameBuffer();
 GLuint createTextureAttachment(int width, int height);

@@ -9,7 +9,6 @@ out vec3 textureCoords;
 
 void main () {
 
-
    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4 (positions, 1.0);;
    textureCoords= positions;
 

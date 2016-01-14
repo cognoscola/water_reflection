@@ -8,9 +8,9 @@
 
 int main() {
 
-    Window hardware; //manage the window
-    assert(restart_gl_log());  //restart the log system
-    assert(start_gl(&hardware)); //start the glfw instance
+    Window hardware;                //manage the window
+    assert(restart_gl_log());       //restart the log system
+    assert(start_gl(&hardware));    //start the glfw instance
 
     //check that our framebuffer is initialized correctly
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -38,6 +38,7 @@ int main() {
     Water water; // water object
     waterInit(&water, &hardware, camera.proj_mat);
 
+    //set initial opengl states
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glEnable (GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -45,18 +46,20 @@ int main() {
 
     while(!glfwWindowShouldClose (hardware.window)) {
 
-        //timing calculation
+        //Keep track of time
         static double previous_seconds = glfwGetTime ();
         double current_seconds = glfwGetTime ();
         double elapsed_seconds = current_seconds - previous_seconds;
         previous_seconds = current_seconds;
 
+        //Record frames
         if(videoUpdateTimer(&video, &elapsed_seconds)) break;
 
         glEnable(GL_CLIP_DISTANCE0);
+        //Update camera's movement
         updateMovement(&camera, &input);
 
-        //RENDER THE REFLECTION BUFFER
+        //RENDER THINGS TO THE REFLECTION BUFFER
         bindFrameBufer(water.reflectionFrameBuffer, REFLECTION_WIDTH, REFLECTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         water.reflectionDistance = 2 * (camera.pos[1] - water.waterHeight); //save the camera height
@@ -71,7 +74,7 @@ int main() {
         calculateViewMatrices(&camera);
         unbindCurrentFrameBuffer(&hardware);
 
-        //RENDER THE REFRACTION BUFFER
+        //RENDER THINGS THE REFRACTION BUFFER
         bindFrameBufer(water.refractionFrameBuffer, REFRACTION_WIDTH, REFRACTION_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         meshRender(&terrain,&camera, 5.0f);
@@ -108,6 +111,7 @@ int main() {
         glfwSwapBuffers(hardware.window);
     }
 
+    //At this point the program is shutting down, clean up
     waterCleanUp(&water);
     meshCleanUp(&terrain);
     skyCleanUp(&sky);

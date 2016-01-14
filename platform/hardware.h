@@ -6,6 +6,4 @@
 #define SIMPLE_LEVEL_EDITOR_HARDWARE_H
 struct Window;
 
-
-
 #endif //SIMPLE_LEVEL_EDITOR_HARDWARE_H

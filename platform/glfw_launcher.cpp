@@ -1,6 +1,6 @@
 //
 // Created by alvaregd on 27/11/15.
-//
+// Execute platform related calls such as create window, set the size etc..
 
 #include <GL/glew.h>
 #include "glfw_launcher.h"
@@ -18,6 +18,7 @@ bool start_gl (Window * hardware) {
         return false;
     }
 
+    //Create a fullscreen window
     hardware->mon= glfwGetPrimaryMonitor();
     hardware->vmode = glfwGetVideoMode(hardware->mon);
     hardware->window = glfwCreateWindow (hardware->vmode->width, hardware->vmode->height, "Hello World", hardware->mon, NULL);
@@ -27,11 +28,13 @@ bool start_gl (Window * hardware) {
         return 1;
     }
 
+    //create opengl context
     glfwMakeContextCurrent (hardware->window);
 
     glewExperimental = GL_TRUE;
     glewInit ();
 
+    // print out version
     renderer = glGetString (GL_RENDERER); /* get renderer string */
     version = glGetString (GL_VERSION); /* version as a string */
     printf ("Renderer: %s\n", renderer);

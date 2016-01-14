@@ -4,6 +4,7 @@
 #ifndef WATER_REFLECTION_INPUT_H
 #define WATER_REFLECTION_INPUT_H
 
+/** keyboard input states */
 struct Input{
     bool wPressed;
     bool sPressed;

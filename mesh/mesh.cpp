@@ -12,17 +12,20 @@
 #include "mesh.h"
 
 void meshInit(Mesh* mesh, GLfloat* proj_mat){
+
+    /** load memory etc. */
     assert(meshLoadMeshFile(MESH_FILE, &mesh->vao, &mesh->vertexCount));
     meshLoadTexture(mesh);
     meshLoadShaderProgram(mesh);
     glUseProgram(mesh->shader);
     meshGetUniforms(mesh);
+
+    //set initial shader conditions
     glUniform4f(mesh->location_clip_plane, 0.0f, -1.0f, 0.0f, 1.0f);
     glUniformMatrix4fv(mesh->location_projection_mat , 1, GL_FALSE, proj_mat);
     mat4 s = scale(identity_mat4(), vec3(10,10,10));
     mesh->modelMatrix = s;
     glUniformMatrix4fv(mesh->location_model_mat , 1, GL_FALSE, mesh->modelMatrix.m);
-
 }
 
 bool meshLoadMeshFile(const char *fileName, GLuint *vao, int *point_count){
@@ -149,7 +152,6 @@ void meshLoadTexture(Mesh* mesh){
 }
 
 void meshLoadShaderProgram(Mesh * mesh){
-
     mesh->shader = create_programme_from_files(MESH_VERTEX, MESH_FRAGMENT);
 }
 
@@ -162,6 +164,7 @@ void meshGetUniforms(Mesh* mesh){
 
 void meshRender(Mesh* mesh, Camera* camera, GLfloat planeHeight){
 
+    /** update and render mesh */
     glUseProgram(mesh->shader);
     glUniform4f(mesh->location_clip_plane, 0.0f, 1.0f, 0.0f, planeHeight);
     glUniformMatrix4fv(mesh->location_view_mat, 1, GL_FALSE, camera->viewMatrix.m);
@@ -182,5 +185,5 @@ void meshRender(Mesh* mesh, Camera* camera, GLfloat planeHeight){
 void meshCleanUp(Mesh *mesh){
     glDeleteVertexArrays(1, &mesh->vao);
     glDeleteBuffers(1, &mesh->vbo);
-
+    glDeleteTextures(1, &mesh->texture);
 }

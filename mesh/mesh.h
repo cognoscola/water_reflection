@@ -1,6 +1,7 @@
 //
 // Created by alvaregd on 06/12/15.
 //
+//
 
 #ifndef WATER_REFLECTION_MESH_H
 #define WATER_REFLECTION_MESH_H
@@ -16,6 +17,7 @@
 #define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
 
 
+/** holds opengl information about a mesh*/
 struct Mesh{
 
     GLuint shader;
@@ -31,14 +33,23 @@ struct Mesh{
     mat4 modelMatrix;
 
     int vertexCount;
-
 };
 
+/** load memory, initialize states etc..*/
 void meshInit(Mesh* mesh, GLfloat* proj_mat);
+
 bool meshLoadMeshFile(const char *fileName, GLuint *vao, int *point_count);
+
+/** Load and create an opengl texture */
 void meshLoadTexture(Mesh* mesh);
 void meshLoadShaderProgram(Mesh * mesh);
+
+/** get shader Uniforms **/
 void meshGetUniforms(Mesh* mesh);
+
+/** Render to the mesh to the scene*/
 void meshRender(Mesh* mesh, Camera* camera, GLfloat planeHeight);
+
+/** free memory etc.. */
 void meshCleanUp(Mesh *mesh);
 #endif //WATER_REFLECTION_MESH_H

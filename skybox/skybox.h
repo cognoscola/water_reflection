@@ -1,4 +1,5 @@
 // Created by alvaregd on 01/12/15.
+//
 
 #ifndef SIMPLE_LEVEL_EDITOR_SKYBOX_SHADER_H
 #define SIMPLE_LEVEL_EDITOR_SKYBOX_SHADER_H

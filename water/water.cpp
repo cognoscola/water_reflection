@@ -14,11 +14,13 @@
 void waterInit(Water *water, Window *hardware, GLfloat* proj_mat) {
 
     //create texture objects for water effects
-    waterLoadTexture(water, DUDV_FILE, DUDV);
-    waterLoadTexture(water, NORMALMAP_FILE, NORMAL);
+    waterLoadEffectTexture(water, DUDV_FILE, DUDV); //distortion map
+    waterLoadEffectTexture(water, NORMALMAP_FILE, NORMAL); //normal map
+
+    //create vertex array object
     waterCreateVao(water);
 
-    //create frame buffer stuff
+    //create frame buffer objects
     water->reflectionFrameBuffer = createFrameBuffer();
     water->reflectionTexture = createTextureAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
     water->reflectionDepthBuffer = createDepthBufferAttachment(REFLECTION_WIDTH, REFLECTION_HEIGHT);
@@ -31,6 +33,8 @@ void waterInit(Water *water, Window *hardware, GLfloat* proj_mat) {
     //create shader
     water->shader = create_programme_from_files(WATER_VERTEX, WATER_FRAGMENT);
     glUseProgram(water->shader);
+
+    //get shader uniforms
     waterGetUniforms(water);
 
     //set initial shader settings
@@ -56,8 +60,8 @@ void waterInit(Water *water, Window *hardware, GLfloat* proj_mat) {
 
 }
 
-
-void waterLoadTexture(Water* water, const char* name, int type){
+/**Create a texture object for lighting effects **/
+void waterLoadEffectTexture(Water *water, const char *name, int type){
 
     GLuint texID;
     glGenTextures(1, &texID);
@@ -80,18 +84,11 @@ void waterLoadTexture(Water* water, const char* name, int type){
     else if(type == DUDV)water->dudvTexture = texID;
 }
 
+/** create a vertex array object **/
 void waterCreateVao(Water* water){
 
-    GLfloat texcoords[] = {
-            1.0f,1.0f,
-            0.0f,1.0f,
-            0.0f,0.0f,
-            0.0f,0.0f,
-            1.0f, 0.0f,
-            1.0f,1.0f,
-    };
 
-    GLfloat reflection_points[] = {
+    GLfloat quadCoords[] = {
             -0.75f, 0.25f,  0.0f,
             -0.25f, 0.25f,  0.0f,
             -0.25f, 0.75f,  0.0f,
@@ -100,28 +97,20 @@ void waterCreateVao(Water* water){
             -0.75f, 0.25f,  0.0f
     };
 
-    GLuint reflectionVbo = 0;
-    glGenBuffers(1, &reflectionVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, reflectionVbo);
-    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), reflection_points, GL_STATIC_DRAW);
-    water->positionVbo = reflectionVbo;
+    GLuint positionVbo = 0;
+    glGenBuffers(1, &positionVbo);
+    glBindBuffer(GL_ARRAY_BUFFER, positionVbo);
+    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), quadCoords, GL_STATIC_DRAW);
+    water->positionVbo = positionVbo;
 
-    GLuint water_coords_vbo;
-    glGenBuffers(1, &water_coords_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, water_coords_vbo);
-    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), texcoords, GL_STATIC_DRAW);
-    water->texCoordVbo = water_coords_vbo;
 
-    GLuint waterReflectionVao = 0;
-    glGenVertexArrays(1, &waterReflectionVao);
-    glBindVertexArray(waterReflectionVao);
-    glBindBuffer(GL_ARRAY_BUFFER, reflectionVbo);
+    GLuint waterVao = 0;
+    glGenVertexArrays(1, &waterVao);
+    glBindVertexArray(waterVao);
+    glBindBuffer(GL_ARRAY_BUFFER, positionVbo);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-    glBindBuffer(GL_ARRAY_BUFFER, water_coords_vbo);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
     glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    water->vao = waterReflectionVao;
+    water->vao = waterVao;
 
 }
 
@@ -197,6 +186,7 @@ void waterGetUniforms(Water* water) {
 }
 
 void waterUpdate(Water* water){
+    //update movement of the wave
     water->moveFactor += (WAVE_SPEED *  0.000003 * 500);
     water->moveFactor = fmod(water->moveFactor, 1.0);
 }
