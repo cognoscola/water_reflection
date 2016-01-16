@@ -8,7 +8,7 @@
 
 int main() {
 
-    Window hardware;                //manage the window
+    Window hardware;                //window object
     assert(restart_gl_log());       //restart the log system
     assert(start_gl(&hardware));    //start the glfw instance
 

@@ -15,6 +15,8 @@ void main(void){
     vec4 vsPos = vec4 (positions, 1.0);
     gl_Position = projectionMatrix  *  viewMatrix * modelMatrix * vsPos;
     pass_textureCoords = textureCoords;
+
+    //impose a climping plane for the case we need to render to the reflection or the refration framebuffer
     gl_ClipDistance[0] = dot(plane,vsPos);
 
 }

@@ -1,5 +1,9 @@
 // Created by alvaregd on 01/12/15.
 //
+/**
+ * Skybox
+ * draws a giant box that surround the camera
+ */
 
 #ifndef SIMPLE_LEVEL_EDITOR_SKYBOX_SHADER_H
 #define SIMPLE_LEVEL_EDITOR_SKYBOX_SHADER_H
@@ -37,8 +41,24 @@ struct Skybox{
     GLfloat angle;
 };
 
+/**
+ * Initialize a skybox object. Since there is only one skybox, initial
+ * object states are hardcoded. It is safe to call skyboxRender after this
+ * out sky: the skybox to initialize
+ * in projection_matrix: the scene's projection matrix
+ */
 void skyInit(Skybox* sky, GLfloat* projection_matrix);
+/**
+ * Load the textures that will go on the specified skybox
+ * Note: Since there is only one skybox, there is only one set of textures and so they are
+ * hardcoded in this project
+ * out sky: the skybox object to hold the textures
+ */
 void skyLoadCubeMapTextures(Skybox *sky);
+
+/**
+ * Load the shader program for this skyobject
+ */
 void skyLoadShaderProgram(Skybox *sky);
 
 /** create buffer object **/
