@@ -5,6 +5,19 @@ This is my first attempt at making water using OpenGL. I learned by following Yo
 See what it looks like here: 
 https://www.instagram.com/p/_AviB3NgeN/
 
+Install:
+- copy the entire project to any directory
+- Go to install directory in a terminal
+- type without quotes: "cmake ." to generate a makefile
+- type without quotes: "make" to generate an executable
+- run executable.
+
+Controls
+- a,s,d,w    - move camera
+- mouse      - orient camera
+- spacebar   - take a snapshop (will freeze for a few seconds)
+- p          - record 10 seconds worth of frames at 25fps
+
 In Summary, here are the steps taken to create the Basic water effect:
 
 1. Create a quad on the scene with the normal (0, 1, 0) and keep track of the height.

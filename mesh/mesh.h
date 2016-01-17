@@ -16,11 +16,11 @@
 #include <utils/math_utils/maths_funcs.h>
 #include <camera/camera.h>
 
-#define TERRAIN_TEXTURE "/home/alvaregd/Documents/Games/water_reflection/assets/ao_colour.png"
-#define MESH_FILE "/home/alvaregd/Documents/Games/water_reflection/assets/floating_island.obj"
+#define TERRAIN_TEXTURE "./assets/ao_colour.png"
+#define MESH_FILE "./assets/floating_island.obj"
 
-#define MESH_VERTEX "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.vert"
-#define MESH_FRAGMENT "/home/alvaregd/Documents/Games/water_reflection/mesh/mesh.frag"
+#define MESH_VERTEX "./mesh/mesh.vert"
+#define MESH_FRAGMENT "./mesh/mesh.frag"
 
 
 /** holds opengl information about a mesh*/
